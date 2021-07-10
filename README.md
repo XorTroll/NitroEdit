@@ -2,13 +2,17 @@
 
 > NDS(i) ROM editor for the Nintendo DS(i) consoles themselves
 
+![0](screenshots/0.png)
+![1](screenshots/1.png)
+![2](screenshots/2.png)
+![3](screenshots/3.png)
+![4](screenshots/4.png)
+
 NitroEdit is a NDS(i) ROM editor for the Nintendo DS(i) consoles themselves, which can be used in flashcarts, TwilightMenu, etc. to make custom edits of ROMs with the simplicity and the portability of this console family.
 
 NitroEdit is the result of bringing the concept of already existing Nintendo DS(i) ROM editors to the DS(i) consoles themselves.
 
 While it's still a work-in-progress project, it's quite close for an initial release with some basic features.
-
-Currently I can't post any actual screenshots of the project running due to emulators' lack of proper FAT/SD emulation support and not being able to capture gameplay on my real console. Any help regarding this would be appreciated.
 
 Any suggestions, ideas and contributions are always welcome.
 
