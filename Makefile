@@ -21,10 +21,10 @@ SOURCES		:=	source source/fs source/gfx source/ntr source/ntr/nfs source/util so
 INCLUDES	:=	include include/extra
 NITRODATA	:=	nitrofs
 
-VERSION	:=	0.0
+VERSION	:=	0.1
 
 GAME_TITLE	:=	NitroEdit
-GAME_SUBTITLE1	:=	ROM editor
+GAME_SUBTITLE1	:=	Nintendo DS(i) ROM editor
 GAME_SUBTITLE2	:=	v$(VERSION) - by XorTroll
 GAME_ICON	:=	$(TOPDIR)/NitroEdit.bmp
 

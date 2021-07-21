@@ -35,7 +35,7 @@ namespace ui::menu {
 
         g_MenuEntries = {
             {
-                g_FsIconGfx, "Browse SD card",
+                g_FsIconGfx, "Browse filesystem",
                 []() {
                     g_Logo.Unload();
                     LoadFatFileBrowseMenu();
@@ -44,7 +44,7 @@ namespace ui::menu {
             {
                 g_AboutIconGfx, "About",
                 []() {
-                    ShowOkDialog("TODO:\nWrite a proper about dialog ;)");
+                    ShowOkDialog("NitroEdit v" NEDIT_VERSION "\n" "Nintendo DS(i) ROM editor" "\n\n" "Check out GitHub" "\n" "for more information!");
                 }
             }
         };

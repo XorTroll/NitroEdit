@@ -7,6 +7,9 @@
 ![2](screenshots/2.png)
 ![3](screenshots/3.png)
 ![4](screenshots/4.png)
+![5](screenshots/5.png)
+![6](screenshots/6.png)
+![7](screenshots/7.png)
 
 NitroEdit is a NDS(i) ROM editor for the Nintendo DS(i) consoles themselves, which can be used in flashcarts, TwilightMenu, etc. to make custom edits of ROMs with the simplicity and the portability of this console family.
 
@@ -97,3 +100,5 @@ Any suggestions, ideas and contributions are always welcome.
 - This project uses [lodepng](https://github.com/lvandeve/lodepng) and [stb-truetype](https://github.com/nothings/stb/blob/master/stb_truetype.h) to support loading PNG and TTF files respectively.
 
 - This project makes use of a non-official TTF of the Nintendo DS(i)'s BIOS font, available here: https://www.dafont.com/nintendo-ds-bios.font
+
+- This project's icons were mostly grabbed from [Icons8](https://icons8.com/).
