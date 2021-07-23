@@ -449,7 +449,7 @@ namespace ui::menu {
         void LoadFileEntryImpl(const bool is_fat, const std::string &entry_name, const std::string &entry_path, std::vector<ScrollMenuEntry> &entries) {
             const auto ext = util::ToLowerString(fs::GetFileExtension(entry_name));
             // TODO: detect formats by checking headers, etc.
-            if((ext == "nds") || (ext == "srl")) || (ext == "ids")) || (ext == "dsi")) || (ext == "app")) {
+            if((ext == "nds") || (ext == "srl") || (ext == "ids") || (ext == "dsi") || (ext == "app")) {
                 entries.push_back({
                     .icon_gfx = g_ROMIconGfx,
                     .text = entry_name,
