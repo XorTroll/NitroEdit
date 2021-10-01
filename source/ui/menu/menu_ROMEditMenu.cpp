@@ -27,7 +27,10 @@ namespace ui::menu {
                     }
                     case DialogResult::Yes: {
                         auto &cur_rom = GetCurrentROM();
-                        SaveExternalFsFile(cur_rom, "ROM");
+                        if(!SaveExternalFsFile(cur_rom, "ROM")) {
+                            // Treat this as a cancel
+                            return;
+                        }
                         // Fallthrough
                     }
                     case DialogResult::No: {
