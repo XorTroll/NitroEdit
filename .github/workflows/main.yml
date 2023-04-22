@@ -1,0 +1,20 @@
+
+name: Build NitroEdit
+
+on: [push]
+
+jobs:
+  NitroEdit:
+    runs-on: ubuntu-latest
+
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+    - name: Build
+      run: make -C NitroEdit/
+
+    - uses: actions/upload-artifact@master
+      with:
+        name: NitroEdit
+        path: NitroEdit/NitroEdit.nds
