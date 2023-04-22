@@ -2,15 +2,9 @@
 
 > C++ libraries and various tools for NDS(i) ROM/file editing: PC cmd-line tools and an editor for the Nintendo DS(i) consoles themselves, screenshots below
 
-<img src="NitroEdit/screenshots/0.png" alt="drawing" width="192"/>
-<img src="NitroEdit/screenshots/1.png" alt="drawing" width="192"/>
-<img src="NitroEdit/screenshots/2.png" alt="drawing" width="192"/>
-<img src="NitroEdit/screenshots/3.png" alt="drawing" width="192"/>
+<img src="NitroEdit/screenshots/0.png" alt="drawing" width="192"/><img src="NitroEdit/screenshots/1.png" alt="drawing" width="192"/><img src="NitroEdit/screenshots/2.png" alt="drawing" width="192"/><img src="NitroEdit/screenshots/3.png" alt="drawing" width="192"/>
 
-<img src="NitroEdit/screenshots/4.png" alt="drawing" width="192"/>
-<img src="NitroEdit/screenshots/5.png" alt="drawing" width="192"/>
-<img src="NitroEdit/screenshots/6.png" alt="drawing" width="192"/>
-<img src="NitroEdit/screenshots/7.png" alt="drawing" width="192"/>
+<img src="NitroEdit/screenshots/4.png" alt="drawing" width="192"/><img src="NitroEdit/screenshots/5.png" alt="drawing" width="192"/><img src="NitroEdit/screenshots/6.png" alt="drawing" width="192"/><img src="NitroEdit/screenshots/7.png" alt="drawing" width="192"/>
 
 - [NitroEdit](#nitroedit)
   - [libnedit (C++ libraries)](#libnedit-c-libraries)
