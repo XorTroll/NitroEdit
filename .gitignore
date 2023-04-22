@@ -1,5 +1,7 @@
-/.vscode
+.vscode/
 /test
-/build
-/*.elf
-/*.nds
+build/
+bin/
+obj/
+*.elf
+*.nds
