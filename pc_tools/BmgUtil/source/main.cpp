@@ -42,7 +42,7 @@ namespace {
 
 }
 
-int main(int argc, const char *const *argv) {
+int main(int argc, char **argv) {
     args::ArgumentParser parser("Utility for BMG files");
     args::HelpFlag help(parser, "help", "Displays this help menu", {'h', "help"});
 

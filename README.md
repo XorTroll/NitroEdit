@@ -18,6 +18,7 @@
     - [Building](#building)
   - [PC tools (cmd-line)](#pc-tools-cmd-line)
     - [BmgUtil](#bmgutil)
+    - [NitroFuse](#nitrofuse)
   - [TODO](#todo)
     - [libnedit](#libnedit)
     - [NitroEdit](#nitroedit-1)
@@ -82,7 +83,24 @@ These are simpler tools which deal with different file formats:
 
 ### BmgUtil
 
-Supports listing BMG strings.
+BMG format utility, supports printing info/strings from BMG files and creating BMG files from strings supplied from a text file (check `bmgutil -h` for details).
+
+Some examples:
+
+```sh
+bmgutil list -i Title.bmg
+bmgutil create --in=strings.txt -o strings.bmg --enc=utf16
+```
+
+### NitroFuse
+
+`fusermount`-like tool to mount NitroFs-containing files: NDS(i) ROMs and NARC/CARC files (even LZ77-compressed ones).
+
+Example:
+```sh
+nitrofuse ROM.nds -s -f ./mount_dir
+nitrofuse Demo.narc -d -f ./dir2
+```
 
 ## TODO
 

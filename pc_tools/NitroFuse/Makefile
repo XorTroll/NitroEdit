@@ -1,10 +1,10 @@
 CXX			:=	g++
-CXX_FLAGS	:=	-std=gnu++17 -O3
-LD_FLAGS	:=
+CXX_FLAGS	:=	-std=gnu++17 -O3 -D_FILE_OFFSET_BITS=64
+LD_FLAGS	:=	-lfuse
 BUILD		:=	$(CURDIR)/build
 OBJ_DIR		:=	$(BUILD)/obj
 OUT_DIR		:=	$(BUILD)/bin
-TARGET		:=	bmgutil
+TARGET		:=	nitrofuse
 
 LIBNEDIT	:=	$(CURDIR)/../../libnedit
 COMMON		:=	$(CURDIR)/../common
