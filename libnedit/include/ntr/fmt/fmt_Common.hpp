@@ -12,6 +12,10 @@ namespace ntr::fmt {
             return this->magic == Magic;
         }
 
+        inline void EnsureMagic() {
+            this->magic = Magic;
+        }
+
         static constexpr T Magic = BaseMagic;
     };
 

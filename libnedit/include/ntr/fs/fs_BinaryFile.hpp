@@ -168,6 +168,11 @@ namespace ntr::fs {
                 return this->WriteData(std::addressof(t), sizeof(t));
             }
 
+            template<typename T>
+            inline bool WriteVector(const std::vector<T> &vec) {
+                return this->WriteData(vec.data(), vec.size() * sizeof(T));
+            }
+
             template<typename C>
             inline bool WriteNullTerminatedString(const std::basic_string<C> &str) {
                 if(!this->WriteString(str)) {

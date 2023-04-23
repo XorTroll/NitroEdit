@@ -132,7 +132,10 @@ Supports listing BMG strings.
 
 - Some already existing ROM editors were really helpful in order to understand several file formats and LZ77 (de)compression: [Every File Explorer](https://github.com/Gericom/EveryFileExplorer), [NSMBe5](https://github.com/Dirbaio/NSMB-Editor), [MKDS Course Modifier](https://www.romhacking.net/utilities/1285/) and [DS Sound Studio](https://dswiki.garhoogin.com/page.jsp?name=DS%20Sound%20Studio)
 
-- The following web pages were also really helpful in order to understand several file formats: https://www.romhacking.net/documents/%5b469%5dnds_formats.htm, http://www.feshrine.net/hacking/doc/nds-sdat.html
+- The following web pages were also really helpful in order to understand several file formats:
+  - https://www.romhacking.net/documents/%5b469%5dnds_formats.htm
+  - http://www.feshrine.net/hacking/doc/nds-sdat.html
+  - http://problemkaputt.de/gbatek.htm
 
 - NitroEdit uses [lodepng](https://github.com/lvandeve/lodepng) and [stb-truetype](https://github.com/nothings/stb/blob/master/stb_truetype.h) libraries to support loading PNG and TTF files respectively.
 
