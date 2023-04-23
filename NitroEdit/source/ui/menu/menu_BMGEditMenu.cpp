@@ -39,9 +39,9 @@ namespace ui::menu {
                 .newline_allowed = true,
                 .max_len = 0
             };
-            auto edit_str = ntr::util::ConvertFromUnicode(g_BMG.strings[idx]);
+            auto edit_str = ntr::util::ConvertFromUnicode(g_BMG.strings[idx].str);
             if(ShowKeyboard(ctx, edit_str)) {
-                g_BMG.strings[idx] = ntr::util::ConvertToUnicode(edit_str);
+                g_BMG.strings[idx].str = ntr::util::ConvertToUnicode(edit_str);
                 ReloadBMGEditMenu();
             }
         }
@@ -50,7 +50,7 @@ namespace ui::menu {
             std::vector<ScrollMenuEntry> entries;
             auto text_icon_gfx = GetTextIcon();
             for(u32 i = 0; i < g_BMG.strings.size(); i++) {
-                const auto str = ntr::util::ConvertFromUnicode(g_BMG.strings[i]);
+                const auto str = ntr::util::ConvertFromUnicode(g_BMG.strings[i].str);
                 entries.push_back({
                     .icon_gfx = text_icon_gfx,
                     .text = "String " + std::to_string(i),
