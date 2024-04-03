@@ -145,6 +145,16 @@ namespace ntr::fmt {
             u32 file_count;
         };
 
+        static constexpr auto SSEQVirtualDirectoryName = "sseq";
+        static constexpr auto SSARVirtualDirectoryName = "ssar";
+        static constexpr auto SBNKVirtualDirectoryName = "sbnk";
+        static constexpr auto SWARVirtualDirectoryName = "swar";
+        static constexpr auto STRMVirtualDirectoryName = "strm";
+
+        inline static std::string MakeSWARPath(const std::string &swar_file) {
+            return SWARVirtualDirectoryName + ("/" + swar_file);
+        }
+
         Header header;
         SymbolBlock symb;
         InfoBlock info;
@@ -177,32 +187,35 @@ namespace ntr::fmt {
             return this->header.symb_size > 0;
         }
 
-        bool LocateFile(const std::string &path, u32 &out_file_id);
-        bool ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
-        bool SaveFileSystem() override;
+        Result LocateFile(const std::string &path, u32 &out_file_id);
+        
+        Result ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+
+        Result SaveFileSystem() override;
     };
 
     struct SDATFileHandle : public fs::ExternalFsFileHandle<SDAT> {
         u32 file_id;
         fs::BinaryFile base_bf;
 
-        SDATFileHandle(SDAT &sdat) : fs::ExternalFsFileHandle<SDAT>(sdat) {}
+        SDATFileHandle(std::shared_ptr<SDAT> sdat) : fs::ExternalFsFileHandle<SDAT>(sdat) {}
 
         inline const u32 GetFileOffset() {
-            return this->ext_fs_file.fat_records[this->file_id].offset;
+            return this->ext_fs_file->fat_records.at(this->file_id).offset;
         }
 
         inline const u32 GetFileSize() {
-            return this->ext_fs_file.fat_records[this->file_id].size;
+            return this->ext_fs_file->fat_records.at(this->file_id).size;
         }
 
         bool ExistsImpl(const std::string &path, size_t &out_size) override;
-        bool OpenImpl(const std::string &path) override;
-        size_t GetSizeImpl() override;
-        bool SetOffsetImpl(const size_t offset, const fs::Position pos) override;
-        size_t GetOffsetImpl() override;
-        bool ReadImpl(void *read_buf, const size_t read_size) override;
-        bool CloseImpl() override;
+        Result OpenImpl(const std::string &path) override;
+        Result GetSizeImpl(size_t &out_soze) override;
+        Result SetOffsetImpl(const size_t offset, const fs::Position pos) override;
+        Result GetOffsetImpl(size_t &out_offst) override;
+        Result ReadImpl(void *read_buf, const size_t read_size, size_t &out_read_size) override;
+        Result CloseImpl() override;
     };
 
 }

@@ -5,28 +5,21 @@ namespace ntr::fmt::nfs {
 
     namespace {
 
-        bool ReadNitroDirectoryImpl(const size_t fat_data_offset, const size_t fnt_data_offset, fs::BinaryFile &bf, NitroDirectory &nitro_dir, const u16 dir_id) {
+        Result ReadNitroDirectoryImpl(const size_t fat_data_offset, const size_t fnt_data_offset, fs::BinaryFile &bf, NitroDirectory &nitro_dir, const u16 dir_id) {
             const auto dir_idx = dir_id & 0xfff;
-            if(!bf.SetAbsoluteOffset(fnt_data_offset + dir_idx * sizeof(DirectoryNameTableEntry))) {
-                return false;
-            }
+            NTR_R_TRY(bf.SetAbsoluteOffset(fnt_data_offset + dir_idx * sizeof(DirectoryNameTableEntry)));
 
             DirectoryNameTableEntry dir_entry;
-            if(!bf.Read(dir_entry)) {
-                return false;
-            }
+            NTR_R_TRY(bf.Read(dir_entry));
 
-            if(!bf.SetAbsoluteOffset(fnt_data_offset + dir_entry.start)) {
-                return false;
-            }
+            NTR_R_TRY(bf.SetAbsoluteOffset(fnt_data_offset + dir_entry.start));
 
             auto cur_file_id = dir_entry.id;
             while(true) {
-                const auto entry_offset = bf.GetAbsoluteOffset();
+                size_t entry_offset;
+                NTR_R_TRY(bf.GetAbsoluteOffset(entry_offset));
                 u8 entry_val;
-                if(!bf.Read(entry_val)) {
-                    return false;
-                }
+                NTR_R_TRY(bf.Read(entry_val));
 
                 if(entry_val == 0) {
                     // End of directory
@@ -37,21 +30,14 @@ namespace ntr::fmt::nfs {
                     NitroFile nitro_file = {};
                     nitro_file.entry_offset = entry_offset;
                     const auto name_len = entry_val;
-                    if(!bf.MoveOffset(name_len)) {
-                        return false;
-                    }
+                    NTR_R_TRY(bf.MoveOffset(name_len));
 
-                    const auto old_offset = bf.GetAbsoluteOffset();
-                    if(!bf.SetAbsoluteOffset(fat_data_offset + cur_file_id * sizeof(FileAllocationTableEntry))) {
-                        return false;
-                    }
+                    size_t old_offset;
+                    NTR_R_TRY(bf.GetAbsoluteOffset(old_offset));
+                    NTR_R_TRY(bf.SetAbsoluteOffset(fat_data_offset + cur_file_id * sizeof(FileAllocationTableEntry)));
                     FileAllocationTableEntry fat_entry;
-                    if(!bf.Read(fat_entry)) {
-                        return false;
-                    }
-                    if(!bf.SetAbsoluteOffset(old_offset)) {
-                        return false;
-                    }
+                    NTR_R_TRY(bf.Read(fat_entry));
+                    NTR_R_TRY(bf.SetAbsoluteOffset(old_offset));
 
                     nitro_file.offset = fat_entry.file_start;
                     nitro_file.size = fat_entry.file_end - fat_entry.file_start;
@@ -64,32 +50,25 @@ namespace ntr::fmt::nfs {
                     nitro_subdir.is_root = false;
                     nitro_subdir.entry_offset = entry_offset;
                     const auto name_len = entry_val - 128;
-                    if(!bf.MoveOffset(name_len)) {
-                        return false;
-                    }
+                    NTR_R_TRY(bf.MoveOffset(name_len));
 
                     u16 sub_dir_id;
-                    if(!bf.Read(sub_dir_id)) {
-                        return false;
-                    }
+                    NTR_R_TRY(bf.Read(sub_dir_id));
 
-                    const auto old_offset = bf.GetAbsoluteOffset();
-                    if(!ReadNitroDirectoryImpl(fat_data_offset, fnt_data_offset, bf, nitro_subdir, sub_dir_id)) {
-                        return false;
-                    }
-                    if(!bf.SetAbsoluteOffset(old_offset)) {
-                        return false;
-                    }
+                    size_t old_offset;
+                    NTR_R_TRY(bf.GetAbsoluteOffset(old_offset));
+                    NTR_R_TRY(ReadNitroDirectoryImpl(fat_data_offset, fnt_data_offset, bf, nitro_subdir, sub_dir_id));
+                    NTR_R_TRY(bf.SetAbsoluteOffset(old_offset));
 
                     nitro_dir.dirs.push_back(nitro_subdir);
                 }
             }
 
-            return true;
+            NTR_R_SUCCEED();
         }
 
-        void UpdateNitroDirectoryOffsetsImpl(nfs::NitroDirectory &dir, const NitroFile &this_file, const size_t new_file_size, const size_t pad_count) {
-            const ssize_t size_diff = new_file_size + pad_count - this_file.size;
+        void UpdateNitroDirectoryOffsetsImpl(nfs::NitroDirectory &dir, const NitroFile &this_file, const size_t new_file_size, const size_t pad_size) {
+            const ssize_t size_diff = new_file_size + pad_size - this_file.size;
             for(auto &file : dir.files) {
                 if(file.offset > this_file.offset) {
                     file.offset += size_diff;
@@ -99,58 +78,57 @@ namespace ntr::fmt::nfs {
                 }
             }
             for(auto &subdir : dir.dirs) {
-                UpdateNitroDirectoryOffsetsImpl(subdir, this_file, new_file_size, pad_count);
+                UpdateNitroDirectoryOffsetsImpl(subdir, this_file, new_file_size, pad_size);
             }
         }
 
     }
 
-    std::string NitroEntryBase::GetName(fs::BinaryFile &base_bf) const {
+    Result NitroEntryBase::GetName(fs::BinaryFile &base_bf, std::string &out_name) const {
         if(this->entry_offset == UINT32_MAX) {
-            return RootDirectoryPseudoName;
+            out_name = RootDirectoryPseudoName;
+            NTR_R_SUCCEED();
         }
-        if(base_bf.SetAbsoluteOffset(this->entry_offset)) {
+        else {
+            NTR_R_TRY(base_bf.SetAbsoluteOffset(this->entry_offset));
+
             u8 entry_val;
-            if(base_bf.Read(entry_val)) {
-                char name[128] = {};
-                if(entry_val > 128) {
-                    entry_val -= 128;
-                }
-                if(base_bf.ReadData(name, entry_val)) {
-                    return std::string(name, entry_val);
-                }
+            NTR_R_TRY(base_bf.Read(entry_val));
+            char name[128] = {};
+            if(entry_val > 128) {
+                entry_val -= 128;
             }
-        }
-        return "";
+            NTR_R_TRY(base_bf.ReadDataExact(name, entry_val));
+            out_name.assign(name);
+            NTR_R_SUCCEED();
+        }        
     }
 
-    bool NitroFile::Read(fs::BinaryFile &base_bf, const size_t offset, void *read_buf, const size_t read_size) const {
-        const auto old_offset = base_bf.GetAbsoluteOffset();
-        if(!base_bf.SetAbsoluteOffset(this->offset + offset)) {
-            return false;
-        }
+    Result NitroFile::Read(fs::BinaryFile &base_bf, const size_t offset, void *read_buf, const size_t read_size, size_t &out_read_size) const {
+        size_t old_offset;
+        NTR_R_TRY(base_bf.GetAbsoluteOffset(old_offset));
+        NTR_R_TRY(base_bf.SetAbsoluteOffset(this->offset + offset));
+        ScopeGuard on_exit_cleanup([&]() {
+            base_bf.SetAbsoluteOffset(old_offset);
+        });
+
         const auto r_size = std::min(this->size, read_size);
-        const auto read_ok = base_bf.ReadData(read_buf, r_size);
-        if(!base_bf.SetAbsoluteOffset(old_offset)) {
-            return false;
-        }
+        NTR_R_TRY(base_bf.ReadData(read_buf, r_size, out_read_size));
         
-        return read_ok;
+        NTR_R_SUCCEED();
     }
 
-    bool ReadNitroFsFrom(const size_t fat_data_offset, const size_t fnt_data_offset, fs::BinaryFile &bf, NitroDirectory &out_fs_root_dir) {
+    Result ReadNitroFsFrom(const size_t fat_data_offset, const size_t fnt_data_offset, fs::BinaryFile &bf, NitroDirectory &out_fs_root_dir) {
         out_fs_root_dir.is_root = true;
         out_fs_root_dir.entry_offset = UINT32_MAX;
         return ReadNitroDirectoryImpl(fat_data_offset, fnt_data_offset, bf, out_fs_root_dir, InitialDirectoryId);
     }
 
-    bool NitroFsFileFormat::LookupFile(const std::string &path, NitroFile &out_file) const {
-        auto pos_init = 0;
-        auto pos_found = 0;
-        auto out_res = false;
-
-        if(!this->DoWithReadFile([&](fs::BinaryFile &bf) {
+    Result NitroFsFileFormat::LookupFile(const std::string &path, NitroFile &out_file) const {
+        return this->DoWithReadFile([&](fs::BinaryFile &bf) -> Result {
             const auto *cur_dir = std::addressof(this->nitro_fs);
+            auto pos_init = 0;
+            auto pos_found = 0;
             auto found = true;
             std::string token = "";
             while(pos_found >= 0) {
@@ -161,13 +139,14 @@ namespace ntr::fmt::nfs {
 
                 if(!found) {
                     // Last directory was not found, and there is another token left
-                    out_res = false;
-                    return;
+                    NTR_R_FAIL(ResultNitroFsDirectoryNotFound);
                 }
 
                 found = false;
                 for(const auto &dir : cur_dir->dirs) {
-                    if(token == dir.GetName(bf)) {
+                    std::string dir_name;
+                    NTR_R_TRY(dir.GetName(bf, dir_name));
+                    if(token == dir_name) {
                         cur_dir = std::addressof(dir);
                         found = true;
                         break;
@@ -177,32 +156,28 @@ namespace ntr::fmt::nfs {
 
             // If everything went alright and the path is valid, last token must be a file at cur_dir
             for(const auto &file : cur_dir->files) {
-                if(token == file.GetName(bf)) {
+                std::string file_name;
+                NTR_R_TRY(file.GetName(bf, file_name));
+                if(token == file_name) {
                     out_file = file;
-                    out_res = true;
-                    return;
+                    NTR_R_SUCCEED();
                 }
             }
-        })) {
-            return false;
-        }
-        
-        return out_res;
+            NTR_R_FAIL(ResultNitroFsFileNotFound);
+        });
     }
 
-    std::string NitroFsFileFormat::GetName(const NitroEntryBase &entry) const {
+    Result NitroFsFileFormat::GetName(const NitroEntryBase &entry, std::string &out_name) const {
         fs::BinaryFile bf;
-        if(bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Read, this->comp)) {
-            return entry.GetName(bf);
-        }
-        return "";
+        NTR_R_TRY(bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Read, this->comp));
+
+        NTR_R_TRY(entry.GetName(bf, out_name));
+        NTR_R_SUCCEED();
     }
 
-    bool NitroFsFileFormat::SaveFileSystem() {
+    Result NitroFsFileFormat::SaveFileSystem() {
         std::vector<std::string> ext_fs_files;
-        if(!fs::ListAllStdioFiles(this->ext_fs_root_path, ext_fs_files)) {
-            return false;
-        }
+        NTR_R_TRY(fs::ListAllStdioFiles(this->ext_fs_root_path, ext_fs_files));
 
         auto w_path = this->write_path;
         auto w_file_handle = this->write_file_handle;
@@ -219,9 +194,7 @@ namespace ntr::fmt::nfs {
             for(const auto &ext_fs_file : ext_fs_files) {
                 const auto nfs_path = this->GetBasePath(ext_fs_file);
                 NitroFile nfs_file = {};
-                if(!this->LookupFile(nfs_path, nfs_file)) {
-                    return false;
-                }
+                NTR_R_TRY(this->LookupFile(nfs_path, nfs_file));
                 nfs_files.push_back(std::make_pair(ext_fs_file, nfs_file));
             }
 
@@ -230,65 +203,45 @@ namespace ntr::fmt::nfs {
             });
 
             fs::BinaryFile w_bf;
-            if(!w_bf.Open(w_file_handle, w_path, fs::OpenMode::Write, this->comp)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.Open(w_file_handle, w_path, fs::OpenMode::Write, this->comp));
 
             fs::BinaryFile r_bf;
-            if(!r_bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Read, this->comp)) {
-                return false;
-            }
+            NTR_R_TRY(r_bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Read, this->comp));
 
-            const auto orig_self_size = r_bf.GetSize();
+            size_t orig_self_size;
+            NTR_R_TRY(r_bf.GetSize(orig_self_size));
             const auto base_offset = this->GetBaseOffset();
             const auto pre_file_data_offset = 0;
             const auto pre_file_data_size = base_offset + nfs_files.front().second.offset;
             const auto post_file_data_offset = base_offset + nfs_files.back().second.offset + nfs_files.back().second.size;
-            if(!r_bf.SetAbsoluteOffset(pre_file_data_offset)) {
-                return false;
-            }
-            if(!w_bf.CopyFrom(r_bf, pre_file_data_size)) {
-                return false;
-            }
+            NTR_R_TRY(r_bf.SetAbsoluteOffset(pre_file_data_offset));
+            NTR_R_TRY(w_bf.CopyFrom(r_bf, pre_file_data_size));
 
             const auto fat_entries_offset = this->GetFatEntriesOffset();
             const auto fat_entry_count = this->GetFatEntryCount();
             const auto nfs_file_count = nfs_files.size();
             auto fat_entries = util::NewArray<FileAllocationTableEntry>(fat_entry_count);
-            if(!r_bf.SetAbsoluteOffset(fat_entries_offset)) {
-                return false;
-            }
-            if(!r_bf.ReadData(fat_entries, sizeof(FileAllocationTableEntry) * fat_entry_count)) {
-                return false;
-            }
+            NTR_R_TRY(r_bf.SetAbsoluteOffset(fat_entries_offset));
+            NTR_R_TRY(r_bf.ReadDataExact(fat_entries, sizeof(FileAllocationTableEntry) * fat_entry_count));
             ssize_t size_diff = 0;
 
             u32 i = 0;
             for(auto &[ext_fs_file, nfs_file] : nfs_files) {
                 const auto nfs_file_w_offset = nfs_file.offset + size_diff;
                 const auto nfs_file_r_offset = nfs_file.offset;
-                const auto new_file_size = fs::GetStdioFileSize(ext_fs_file);
+                size_t new_file_size;
+                NTR_R_TRY(fs::GetStdioFileSize(ext_fs_file, new_file_size));
                 {
                     fs::BinaryFile d_bf;
-                    if(!d_bf.Open(std::make_shared<fs::StdioFileHandle>(), ext_fs_file, fs::OpenMode::Read)) {
-                        return false;
-                    }
-                    if(!w_bf.SetAbsoluteOffset(base_offset + nfs_file_w_offset)) {
-                        return false;
-                    }
-                    if(!w_bf.CopyFrom(d_bf, new_file_size)) {
-                        return false;
-                    }
+                    NTR_R_TRY(d_bf.Open(std::make_shared<fs::StdioFileHandle>(), ext_fs_file, fs::OpenMode::Read));
+                    NTR_R_TRY(w_bf.SetAbsoluteOffset(base_offset + nfs_file_w_offset));
+                    NTR_R_TRY(w_bf.CopyFrom(d_bf, new_file_size));
                 }
 
-                size_t pad_count = 0;
-                if(this->HasAlignmentBetweenFileData()) {
-                    while((w_bf.GetAbsoluteOffset() % 0x200) != 0) {
-                        if(!w_bf.Write<u8>(0xff)) {
-                            return false;
-                        }
-                        pad_count++;
-                    }
+                size_t data_align;
+                size_t pad_size = 0;
+                if(this->GetAlignmentBetweenFileData(data_align)) {
+                    NTR_R_TRY(w_bf.WriteEnsureAlignment(data_align, pad_size));
                 }
 
                 const auto has_next_file = (i + 1) < nfs_file_count;
@@ -296,26 +249,23 @@ namespace ntr::fmt::nfs {
                     const auto &[next_ext_fs_file, next_nfs_file] = nfs_files[i + 1];
                     const auto data_between_files_offset = base_offset + nfs_file_r_offset + nfs_file.size;
                     auto data_between_files_size = next_nfs_file.offset - nfs_file_r_offset - nfs_file.size;
-    
-                    if(this->HasAlignmentBetweenFileData()) {
-                        auto tmp_align_offset = w_bf.GetAbsoluteOffset() + data_between_files_size;
-                        auto data_between_files_pad_count = 0;
-                        while((tmp_align_offset % 0x200) != 0) {
+                    if(this->GetAlignmentBetweenFileData(data_align)) {
+                        size_t cur_w_bf_offset;
+                        NTR_R_TRY(w_bf.GetAbsoluteOffset(cur_w_bf_offset));
+                        auto tmp_align_offset = cur_w_bf_offset + data_between_files_size;
+                        auto data_between_files_pad_size = 0;
+                        while(!util::IsAlignedTo(tmp_align_offset, data_align)) {
                             tmp_align_offset++;
-                            data_between_files_pad_count++;
+                            data_between_files_pad_size++;
                         }
-                        data_between_files_size += data_between_files_pad_count;
+                        data_between_files_size += data_between_files_pad_size;
                     }
                     
-                    if(!r_bf.SetAbsoluteOffset(data_between_files_offset)) {
-                        return false;
-                    }
-                    if(!w_bf.CopyFrom(r_bf, data_between_files_size)) {
-                        return false;
-                    }
+                    NTR_R_TRY(r_bf.SetAbsoluteOffset(data_between_files_offset));
+                    NTR_R_TRY(w_bf.CopyFrom(r_bf, data_between_files_size));
                 }
 
-                const ssize_t cur_size_diff = new_file_size + pad_count - nfs_file.size;
+                const ssize_t cur_size_diff = new_file_size + pad_size - nfs_file.size;
 
                 // const auto old_offset = w_bf.GetAbsoluteOffset();
                 for(size_t i = 0; i < fat_entry_count; i++) {
@@ -335,77 +285,53 @@ namespace ntr::fmt::nfs {
 
                 /* update nitrofs's file offsets too */
                 // TODO: fix this
-                // UpdateNitroDirectoryOffsetsImpl(this->nitro_fs, nfs_file, new_file_size, pad_count);
+                // UpdateNitroDirectoryOffsetsImpl(this->nitro_fs, nfs_file, new_file_size, pad_size);
 
                 size_diff += cur_size_diff;
                 i++;
             }
 
-            const auto old_offset = w_bf.GetAbsoluteOffset();
-            if(!w_bf.SetAbsoluteOffset(fat_entries_offset)) {
-                return false;
-            }
-            if(!w_bf.WriteData(fat_entries, sizeof(FileAllocationTableEntry) * fat_entry_count)) {
-                return false;
-            }
+            size_t old_offset;
+            NTR_R_TRY(w_bf.GetAbsoluteOffset(old_offset));
+            NTR_R_TRY(w_bf.SetAbsoluteOffset(fat_entries_offset));
+            NTR_R_TRY(w_bf.WriteData(fat_entries, sizeof(FileAllocationTableEntry) * fat_entry_count));
             delete[] fat_entries;
-            if(!w_bf.SetAbsoluteOffset(old_offset)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.SetAbsoluteOffset(old_offset));
 
             const auto post_file_data_size = orig_self_size - post_file_data_offset;
 
-            if(!r_bf.SetAbsoluteOffset(post_file_data_offset)) {
-                return false;
-            }
-
-            if(!w_bf.CopyFrom(r_bf, post_file_data_size)) {
-                return false;
-            }
+            NTR_R_TRY(r_bf.SetAbsoluteOffset(post_file_data_offset));
+            NTR_R_TRY(w_bf.CopyFrom(r_bf, post_file_data_size));
 
             /* format-specific final writes */
-            if(!this->OnFileSystemWrite(w_bf, size_diff)) {
-                return false;
-            }
+            NTR_R_TRY(this->OnFileSystemWrite(w_bf, size_diff));
         }
         else {
             fs::BinaryFile w_bf;
-            if(!w_bf.Open(w_file_handle, w_path, fs::OpenMode::Write, this->comp)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.Open(w_file_handle, w_path, fs::OpenMode::Write, this->comp));
 
             fs::BinaryFile r_bf;
-            if(!r_bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Read, this->comp)) {
-                return false;
-            }
+            NTR_R_TRY(r_bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Read, this->comp));
 
-            if(!w_bf.CopyFrom(r_bf, r_bf.GetSize())) {
-                return false;
-            }
+            size_t r_file_size;
+            NTR_R_TRY(r_bf.GetSize(r_file_size));
+            NTR_R_TRY(w_bf.CopyFrom(r_bf, r_file_size));
 
-            if(!this->OnFileSystemWrite(w_bf, 0)) {
-                return false;
-            }
+            NTR_R_TRY(this->OnFileSystemWrite(w_bf, 0));
         }
 
         if(write_on_self) {
             fs::BinaryFile w_bf;
-            if(!w_bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Write)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.Open(this->read_file_handle, this->read_path, fs::OpenMode::Write));
 
             fs::BinaryFile r_bf;
-            if(!r_bf.Open(w_file_handle, w_path, fs::OpenMode::Read)) {
-                return false;
-            }
+            NTR_R_TRY(r_bf.Open(w_file_handle, w_path, fs::OpenMode::Read));
 
-            if(!w_bf.CopyFrom(r_bf, r_bf.GetSize())) {
-                return false;
-            }
+            size_t r_file_size;
+            NTR_R_TRY(r_bf.GetSize(r_file_size));
+            NTR_R_TRY(w_bf.CopyFrom(r_bf, r_file_size));
 
-            if(!fs::DeleteStdioFile(w_path)) {
-                return false;
-            }
+            NTR_R_TRY(fs::DeleteStdioFile(w_path));
 
             w_file_handle = nullptr;
             w_path.clear();
@@ -415,7 +341,7 @@ namespace ntr::fmt::nfs {
             fs::DeleteStdioFile(ext_fs_file);
         }
 
-        return true;
+        NTR_R_SUCCEED();
     }
 
 }

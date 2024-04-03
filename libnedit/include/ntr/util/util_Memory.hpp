@@ -16,7 +16,7 @@ namespace ntr::util {
 	}
 
     template<typename T>
-	inline constexpr T IsAlignedTo(const T value, const u64 align) {
+	inline constexpr bool IsAlignedTo(const T value, const u64 align) {
 		return (value % align) == 0;
 	}
 

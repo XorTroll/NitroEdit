@@ -2,59 +2,50 @@
 
 namespace ntr::fmt {
 
-    bool NARC::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
-        this->nitro_fs = {};
-
+    Result NARC::ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
         fs::BinaryFile bf = {};
-        if(!bf.Open(file_handle, path, fs::OpenMode::Read, comp)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
 
-        if(!bf.Read(this->header)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->header));
         if(!this->header.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultNARCInvalidHeader);
         }
 
-        if(!bf.Read(this->fat)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->fat));
         if(!this->fat.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultNARCInvalidFileAllocationTableBlock);
         }
 
         const auto fat_entries_size = this->fat.entry_count * sizeof(nfs::FileAllocationTableEntry);
-        if(!bf.MoveOffset(fat_entries_size)) {
-            return false;
-        }
+        NTR_R_TRY(bf.MoveOffset(fat_entries_size));
 
-        if(!bf.Read(this->fnt)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->fnt));
         if(!this->fnt.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultNARCInvalidFileNameTableBlock);
         }
 
-        const auto fimg_offset = this->header.header_size + this->fat.block_size + this->fnt.block_size;
-        if(!bf.SetAbsoluteOffset(fimg_offset)) {
-            return false;
-        }
-        if(!bf.Read(this->fimg)) {
-            return false;
-        }
+        const auto fimg_offset = util::AlignUp(this->header.header_size + this->fat.block_size + this->fnt.block_size, 0x4);
+        NTR_R_TRY(bf.SetAbsoluteOffset(fimg_offset));
+        NTR_R_TRY(bf.Read(this->fimg));
         if(!this->fimg.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultNARCInvalidFileImageBlock);
         }
 
+        NTR_R_SUCCEED();
+    }
+
+    Result NARC::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+        this->nitro_fs = {};
+
+        fs::BinaryFile bf = {};
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
+
+        const auto fat_entries_size = this->fat.entry_count * sizeof(nfs::FileAllocationTableEntry);
         const auto fat_entries_offset = sizeof(Header) + sizeof(FileAllocationTableBlock);
         const auto fnt_entries_offset = fat_entries_offset + fat_entries_size + sizeof(FileNameTableBlock);
+        NTR_R_TRY(nfs::ReadNitroFsFrom(fat_entries_offset, fnt_entries_offset, bf, this->nitro_fs));
 
-        if(!nfs::ReadNitroFsFrom(fat_entries_offset, fnt_entries_offset, bf, this->nitro_fs)) {
-            return false;
-        }
-
-        return true;
+        NTR_R_SUCCEED();
     }
 
 }

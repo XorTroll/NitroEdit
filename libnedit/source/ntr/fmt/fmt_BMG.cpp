@@ -6,11 +6,11 @@ namespace ntr::fmt {
 
     namespace {
 
-        constexpr size_t DataAlignment = 0x10;
+        constexpr size_t DataAlignment = 0x20;
 
     }
 
-    bool BMG::CreateFrom(const Encoding enc, const size_t attr_size, const std::vector<String> &strs, const u32 file_id, const ntr::fs::FileCompression comp) {
+    Result BMG::CreateFrom(const Encoding enc, const size_t attr_size, const std::vector<Message> &msgs, const u32 file_id, const ntr::fs::FileCompression comp) {
         // The rest of the fields will be automatically set when writing
         this->comp = comp;
 
@@ -18,220 +18,179 @@ namespace ntr::fmt {
 
         this->info.entry_size = InfoSection::OffsetSize + attr_size;
         this->info.file_id = file_id;
-        this->strings = strs;
+        this->messages = msgs;
 
-        return true;
+        NTR_R_SUCCEED();
     }
 
-    bool BMG::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
-        this->strings.clear();
-
+    Result BMG::ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
         fs::BinaryFile bf = {};
-        if(!bf.Open(file_handle, path, fs::OpenMode::Read, comp)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
 
-        if(!bf.Read(this->header)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->header));
         if(!this->header.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultBMGInvalidHeader);
         }
 
-        if(!bf.Read(this->info)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->info));
         if(!this->info.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultBMGInvalidInfoSection);
         }
 
         if(GetCharacterSize(this->header.encoding) == 0) {
-            return false;
+            NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
         }
+        
+        const auto data_offset = sizeof(Header) + this->info.block_size;
+        NTR_R_TRY(bf.SetAbsoluteOffset(data_offset));
+        NTR_R_TRY(bf.Read(this->data));
+        if(!this->data.IsValid()) {
+            NTR_R_FAIL(ResultBMGInvalidDataSection);
+        }
+
+        NTR_R_SUCCEED();
+    }
+    
+    Result BMG::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+        this->messages.clear();
+
+        fs::BinaryFile bf = {};
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
         
         const auto data_offset = sizeof(Header) + this->info.block_size;
         const auto offsets_offset = sizeof(Header) + sizeof(InfoSection);
         const auto strings_offset = data_offset + sizeof(DataSection);
 
-        if(!bf.SetAbsoluteOffset(data_offset)) {
-            return false;
-        }
-        if(!bf.Read(this->data)) {
-            return false;
-        }
-        if(!this->data.IsValid()) {
-            return false;
-        }
-
-        this->strings.reserve(this->info.offset_count);
-        if(!bf.SetAbsoluteOffset(offsets_offset)) {
-            return false;
-        }
+        this->messages.reserve(this->info.offset_count);
+        NTR_R_TRY(bf.SetAbsoluteOffset(offsets_offset));
 
         const auto attrs_size = this->info.entry_size - InfoSection::OffsetSize;
         for(auto i = 0; i < this->info.offset_count; i++) {
             u32 offset = 0;
-            if(!bf.Read(offset)) {
-                return false;
-            }
-            String str = {};
+            NTR_R_TRY(bf.Read(offset));
+
+            Message msg = {};
             for(u32 j = 0; j < attrs_size; j++) {
                 u8 attr;
-                if(!bf.Read(attr)) {
-                    return false;
-                }
-                str.attrs.push_back(attr);
+                NTR_R_TRY(bf.Read(attr));
+
+                msg.attrs.push_back(attr);
             }
 
-            const auto old_offset = bf.GetAbsoluteOffset();
+            size_t old_offset;
+            NTR_R_TRY(bf.GetAbsoluteOffset(old_offset));
 
-            if(!bf.SetAbsoluteOffset(strings_offset + offset)) {
-                return false;
-            }
+            NTR_R_TRY(bf.SetAbsoluteOffset(strings_offset + offset));
 
+            // TODO: pay attention to escaping, special characters used for formatting, etc
             switch(this->header.encoding) {
                 case Encoding::CP1252: {
-                    // Unsupported yet
-                    return false;
+                    // TODO: unsupported yet
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
                 }
                 case Encoding::UTF16: {
-                    if(!bf.ReadNullTerminatedString(str.str)) {
-                        return false;
-                    }
+                    NTR_R_TRY(bf.ReadNullTerminatedString(msg.msg_str));
                     break;
                 }
                 case Encoding::UTF8: {
                     std::string utf8_str;
-                    if(!bf.ReadNullTerminatedString(utf8_str)) {
-                        return false;
-                    }
-                    str.str = util::ConvertToUnicode(utf8_str);
+                    NTR_R_TRY(bf.ReadNullTerminatedString(utf8_str));
+                    msg.msg_str = util::ConvertToUnicode(utf8_str);
                     break;
                 }
                 case Encoding::ShiftJIS: {
-                    // Unsupported yet
-                    return false;
+                    // TODO: unsupported yet
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
                 }
             }
-            this->strings.push_back(str);
+            this->messages.push_back(msg);
 
-            if(!bf.SetAbsoluteOffset(old_offset)) {
-                return false;
-            }
+            NTR_R_TRY(bf.SetAbsoluteOffset(old_offset));
         }
 
-        return true;
+        NTR_R_SUCCEED();
     }
 
-    bool BMG::WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+    Result BMG::WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
         // Ensure strings are correct
         const auto attrs_size = this->info.entry_size - InfoSection::OffsetSize;
-        for(const auto &str: this->strings) {
-            if(str.attrs.size() != attrs_size) {
-                return false;
+        for(const auto &msg: this->messages) {
+            if(msg.attrs.size() != attrs_size) {
+                NTR_R_FAIL(ResultBMGInvalidMessageAttributes);
             }
         }
 
         fs::BinaryFile bf = {};
-        if(!bf.Open(file_handle, path, fs::OpenMode::Write, comp)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Write, comp));
 
         this->info.EnsureMagic();
-        this->info.block_size = util::AlignUp(sizeof(InfoSection) + this->strings.size() * this->info.entry_size, DataAlignment);
-        this->info.offset_count = this->strings.size();
-        if(!bf.SetAbsoluteOffset(sizeof(Header))) {
-            return false;
-        }
-        if(!bf.Write(this->info)) {
-            return false;
-        }
+        this->info.block_size = util::AlignUp(sizeof(InfoSection) + this->messages.size() * this->info.entry_size, DataAlignment);
+        this->info.offset_count = this->messages.size();
+        NTR_R_TRY(bf.SetAbsoluteOffset(sizeof(Header)));
+        NTR_R_TRY(bf.Write(this->info));
 
         const auto data_offset = sizeof(Header) + this->info.block_size;
         const auto offsets_offset = sizeof(Header) + sizeof(InfoSection);
         const auto strings_offset = data_offset + sizeof(DataSection);
 
-        if(!bf.SetAbsoluteOffset(offsets_offset)) {
-            return false;
-        }
+        NTR_R_TRY(bf.SetAbsoluteOffset(offsets_offset));
 
         u32 cur_offset = 0;
         for(auto i = 0; i < this->info.offset_count; i++) {
-            const auto cur_str = this->strings.at(i);
+            const auto cur_msg = this->messages.at(i);
 
-            if(!bf.Write(cur_offset)) {
-                return false;
-            }
-            if(!bf.WriteVector(cur_str.attrs)) {
-                return false;
-            }
+            NTR_R_TRY(bf.Write(cur_offset));
+            NTR_R_TRY(bf.WriteVector(cur_msg.attrs));
 
-            const auto info_section_offset = bf.GetAbsoluteOffset();
-            if(!bf.SetAbsoluteOffset(strings_offset + cur_offset)) {
-                return false;
-            }
+            size_t info_section_offset;
+            NTR_R_TRY(bf.GetAbsoluteOffset(info_section_offset));
+            NTR_R_TRY(bf.SetAbsoluteOffset(strings_offset + cur_offset));
 
             switch(this->header.encoding) {
                 case Encoding::CP1252: {
                     // Unsupported
-                    return false;
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
                 }
                 case Encoding::UTF16: {
-                    if(!bf.WriteNullTerminatedString(cur_str.str)) {
-                        return false;
-                    }
+                    NTR_R_TRY(bf.WriteNullTerminatedString(cur_msg.msg_str));
                     break;
                 }
                 case Encoding::UTF8: {
-                    const auto utf8_str = util::ConvertFromUnicode(cur_str.str);
-                    if(!bf.WriteNullTerminatedString(utf8_str)) {
-                        return false;
-                    }
+                    const auto utf8_str = util::ConvertFromUnicode(cur_msg.msg_str);
+                    NTR_R_TRY(bf.WriteNullTerminatedString(utf8_str));
                     break;
                 }
                 case Encoding::ShiftJIS: {
                     // Unsupported
-                    return false;
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
                 }
             }
 
-            if(!bf.SetAbsoluteOffset(info_section_offset)) {
-                return false;
-            }
+            NTR_R_TRY(bf.SetAbsoluteOffset(info_section_offset));
 
-            cur_offset += cur_str.GetByteLength(this->header.encoding);
+            cur_offset += cur_msg.GetByteLength(this->header.encoding);
         }
 
-        if(!bf.SetAtEnd()) {
-            return false;
-        }
+        NTR_R_TRY(bf.SetAtEnd());
 
-        while(!util::IsAlignedTo(bf.GetAbsoluteOffset(), DataAlignment)) {
-            if(!bf.Write<u8>(0)) {
-                return false;
-            }
-        }
+        size_t cur_file_size;
+        NTR_R_TRY(bf.GetAbsoluteOffset(cur_file_size));
+
+        size_t pad_size;
+        NTR_R_TRY(bf.WriteEnsureAlignment(DataAlignment, pad_size));
 
         this->header.EnsureMagic();
-        this->header.file_size = bf.GetAbsoluteOffset();
+        this->header.file_size = cur_file_size + pad_size;
         this->header.section_count = 2;
-        if(!bf.SetAbsoluteOffset(0)) {
-            return false;
-        }
-        if(!bf.Write(this->header)) {
-            return false;
-        }
+        NTR_R_TRY(bf.SetAbsoluteOffset(0));
+        NTR_R_TRY(bf.Write(this->header));
 
         this->data.EnsureMagic();
         this->data.block_size = this->header.file_size - data_offset;
-        if(!bf.SetAbsoluteOffset(data_offset)) {
-            return false;
-        }
-        if(!bf.Write(this->data)) {
-            return false;
-        }
+        NTR_R_TRY(bf.SetAbsoluteOffset(data_offset));
+        NTR_R_TRY(bf.Write(this->data));
 
-        return true;
+        NTR_R_SUCCEED();
     }
 
 }

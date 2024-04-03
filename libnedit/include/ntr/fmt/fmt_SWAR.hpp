@@ -36,17 +36,18 @@ namespace ntr::fmt {
         SWAR() {}
         SWAR(const SWAR&) = delete;
 
-        bool ReadSampleData(const Sample sample, u8 *out_sample_data);
-        bool WriteSampleData(const Sample sample, const u8 *sample_data, size_t sample_data_size, const std::string &path, std::shared_ptr<fs::FileHandle> file_handle);
+        Result ReadSampleData(const Sample sample, u8 *out_sample_data);
+        Result WriteSampleData(const Sample sample, const u8 *sample_data, size_t sample_data_size, const std::string &path, std::shared_ptr<fs::FileHandle> file_handle);
 
-        inline bool WriteSampleData(const Sample sample, const u8 *sample_data, size_t sample_data_size, std::shared_ptr<fs::FileHandle> file_handle) {
+        inline Result WriteSampleData(const Sample sample, const u8 *sample_data, size_t sample_data_size, std::shared_ptr<fs::FileHandle> file_handle) {
             return this->WriteSampleData(sample, sample_data, sample_data_size, this->read_path, file_handle);
         }
 
-        bool ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
 
-        bool WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override {
-            return false;
+        Result WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override {
+            NTR_R_FAIL(ResultSWARWriteNotSupported);
         }
     };
 

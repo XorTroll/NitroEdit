@@ -18,6 +18,7 @@ namespace ntr::util {
         const auto is_num = !str.empty() && std::find_if(str.begin(), str.end(), [](const char &c) {
             return !std::isdigit(c);
         }) == str.end();
+
         if(is_num) {
             out_num = static_cast<u32>(std::stoi(str));
         }

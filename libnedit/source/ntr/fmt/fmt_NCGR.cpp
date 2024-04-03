@@ -2,92 +2,73 @@
 
 namespace ntr::fmt {
 
-    bool NCGR::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+    Result NCGR::ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
         fs::BinaryFile bf;
-        if(!bf.Open(file_handle, path, fs::OpenMode::Read, comp)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
 
-        if(!bf.Read(this->header)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->header));
         if(!this->header.IsValid()) {
-            return false;
+            NTR_R_FAIL(this->header.magic);
         }
 
-        if(!bf.Read(this->char_data)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->char_data));
         if(!this->char_data.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultNCGRInvalidCharacterDataBlock);
         }
 
         if(this->header.block_count >= 2) {
-            if(!bf.MoveOffset(this->char_data.data_size)) {
-                return false;
-            }
+            NTR_R_TRY(bf.MoveOffset(this->char_data.data_size));
 
-            if(!bf.Read(this->char_pos)) {
-                return false;
-            }
+            NTR_R_TRY(bf.Read(this->char_pos));
             if(!this->char_pos.IsValid()) {
-                return false;
+                NTR_R_FAIL(ResultNCGRInvalidCharacterPositionBlock);
             }
         }
 
-        if(!bf.SetAbsoluteOffset(sizeof(Header) + sizeof(CharacterDataBlock))) {
-            return false;
-        }
-        this->data = util::NewArray<u8>(this->char_data.data_size);
-        if(!bf.ReadData(this->data, this->char_data.data_size)) {
-            delete[] this->data;
-            this->data = nullptr;
-            return false;
-        }
-
-        return true;
+        NTR_R_SUCCEED();
     }
 
-    bool NCGR::WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+    Result NCGR::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
         fs::BinaryFile bf;
-        if(!bf.Open(file_handle, path, fs::OpenMode::Write, comp)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
 
-        if(!bf.SetAbsoluteOffset(sizeof(Header) + sizeof(CharacterDataBlock))) {
-            return false;
-        }
-        if(!bf.WriteData(this->data, this->char_data.data_size)) {
-            return false;
-        }
+        NTR_R_TRY(bf.SetAbsoluteOffset(sizeof(Header) + sizeof(CharacterDataBlock)));
+        this->data = util::NewArray<u8>(this->char_data.data_size);
+        ScopeGuard on_fail_cleanup([&]() {
+            delete[] this->data;
+        });
 
+        NTR_R_TRY(bf.ReadDataExact(this->data, this->char_data.data_size));
+
+        on_fail_cleanup.Cancel();
+        NTR_R_SUCCEED();
+    }
+
+    Result NCGR::WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+        fs::BinaryFile bf;
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Write, comp));
+
+        NTR_R_TRY(bf.SetAbsoluteOffset(sizeof(Header) + sizeof(CharacterDataBlock)));
+        NTR_R_TRY(bf.WriteData(this->data, this->char_data.data_size));
+
+        this->header.EnsureMagic();
         this->char_data.block_size = sizeof(CharacterDataBlock) + this->char_data.data_size;
         this->header.file_size = sizeof(Header) + this->char_data.block_size;
         if(this->header.block_count >= 2) {
             this->header.file_size += sizeof(CharacterPositionBlock);
         }
 
-        if(!bf.SetAbsoluteOffset(0)) {
-            return false;
-        }
-        if(!bf.Write(this->header)) {
-            return false;
-        }
+        NTR_R_TRY(bf.SetAbsoluteOffset(0));
+        NTR_R_TRY(bf.Write(this->header));
 
-        if(!bf.Write(this->char_data)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Write(this->char_data));
 
         if(this->header.block_count >= 2) {
-            if(!bf.MoveOffset(this->char_data.data_size)) {
-                return false;
-            }
-            if(!bf.Write(this->char_pos)) {
-                return false;
-            }
+            NTR_R_TRY(bf.MoveOffset(this->char_data.data_size));
+            NTR_R_TRY(bf.Write(this->char_pos));
         }
 
-        return true;
+        NTR_R_SUCCEED();
     }
 
 }

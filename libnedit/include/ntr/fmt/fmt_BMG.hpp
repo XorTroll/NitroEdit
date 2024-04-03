@@ -57,28 +57,29 @@ namespace ntr::fmt {
         struct DataSection : public CommonBlock<0x31544144 /* "DAT1" */ > {
         };
 
-        struct String {
-            std::u16string str;
+        struct Message {
+            std::u16string msg_str;
             std::vector<u8> attrs;
 
             inline size_t GetByteLength(const Encoding enc) const {
                 // null-terminator is also included
-                return (str.length() + 1) * GetCharacterSize(enc);
+                return (msg_str.length() + 1) * GetCharacterSize(enc);
             }
         };
 
         Header header;
         InfoSection info;
         DataSection data;
-        std::vector<String> strings;
+        std::vector<Message> messages;
 
         BMG() {}
         BMG(const BMG&) = delete;
 
-        bool CreateFrom(const Encoding enc, const size_t attr_size, const std::vector<String> &strs, const u32 file_id, const ntr::fs::FileCompression comp);
+        Result CreateFrom(const Encoding enc, const size_t attr_size, const std::vector<Message> &msgs, const u32 file_id, const ntr::fs::FileCompression comp = ntr::fs::FileCompression::None);
 
-        bool ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
-        bool WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
     };
 
 }

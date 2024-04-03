@@ -4,7 +4,7 @@
 
 namespace ntr::fs {
 
-    constexpr size_t CopyBufferSize = 0x100000;
+    constexpr size_t CopyBufferSize = 0x10000;
     constexpr size_t ReallocBufferSize = 0x10000;
 
     enum class OpenMode : u8 {
@@ -23,8 +23,7 @@ namespace ntr::fs {
 
     enum class Position : u8 {
         Begin,
-        Current,
-        End
+        Current
     };
 
     enum class FileCompression : u8 {
@@ -34,13 +33,13 @@ namespace ntr::fs {
 
     struct FileHandle {
         virtual bool Exists(const std::string &path, size_t &out_size) = 0;
-        virtual bool Open(const std::string &path, const OpenMode mode) = 0;
-        virtual size_t GetSize() = 0;
-        virtual bool SetOffset(const size_t offset, const Position pos) = 0;
-        virtual size_t GetOffset() = 0;
-        virtual bool Read(void *read_buf, const size_t read_size) = 0;
-        virtual bool Write(const void *write_buf, const size_t write_size) = 0;
-        virtual bool Close() = 0;
+        virtual Result Open(const std::string &path, const OpenMode mode) = 0;
+        virtual Result GetSize(size_t &out_size) = 0;
+        virtual Result SetOffset(const size_t offset, const Position pos) = 0;
+        virtual Result GetOffset(size_t &out_offset) = 0;
+        virtual Result Read(void *read_buf, const size_t read_size, size_t &out_read_size) = 0;
+        virtual Result Write(const void *write_buf, const size_t write_size) = 0;
+        virtual Result Close() = 0;
     };
 
     struct FileFormat {
@@ -50,36 +49,39 @@ namespace ntr::fs {
         std::shared_ptr<fs::FileHandle> write_file_handle;
         fs::FileCompression comp;
 
-        virtual bool ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) = 0;
+        virtual Result ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) = 0;
 
-        inline bool ReadFrom(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp = fs::FileCompression::None) {
-            if(this->ReadImpl(path, file_handle, comp)) {
-                this->read_path = path;
-                this->read_file_handle = file_handle;
-                this->comp = comp;
-                return true;
-            }
-
-            return false;
+        inline Result Validate(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp = fs::FileCompression::None) {
+            return this->ValidateImpl(path, file_handle, comp);
         }
 
-        inline bool ReadCompressedFrom(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle) {
+        virtual Result ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) = 0;
+
+        inline Result ReadFrom(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp = fs::FileCompression::None) {
+            NTR_R_TRY(this->ValidateImpl(path, file_handle, comp));
+            NTR_R_TRY(this->ReadImpl(path, file_handle, comp));
+
+            this->read_path = path;
+            this->read_file_handle = file_handle;
+            this->comp = comp;
+            NTR_R_SUCCEED();
+        }
+
+        inline Result ReadCompressedFrom(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle) {
             return this->ReadFrom(path, file_handle, fs::FileCompression::LZ77);
         }
 
-        virtual bool WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) = 0;
+        virtual Result WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) = 0;
 
-        inline bool WriteTo(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle) {
-            if(this->WriteImpl(path, file_handle, this->comp)) {
-                this->write_path = path;
-                this->write_file_handle = file_handle;
-                return true;
-            }
+        inline Result WriteTo(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle) {
+            NTR_R_TRY(this->WriteImpl(path, file_handle, this->comp));
 
-            return false;
+            this->write_path = path;
+            this->write_file_handle = file_handle;
+            NTR_R_SUCCEED();
         }
 
-        inline bool WriteTo(std::shared_ptr<fs::FileHandle> file_handle) {
+        inline Result WriteTo(std::shared_ptr<fs::FileHandle> file_handle) {
             return this->WriteTo(this->read_path, file_handle);
         }
     };
@@ -101,11 +103,11 @@ namespace ntr::fs {
             return ext_fs_path.substr(this->ext_fs_root_path.length() + 1);
         }
 
-        bool WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override {
-            return true;
+        Result WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override {
+            NTR_R_SUCCEED();
         }
 
-        virtual bool SaveFileSystem() = 0;
+        virtual Result SaveFileSystem() = 0;
     };
 
     std::string GetAbsolutePath(const std::string &path);

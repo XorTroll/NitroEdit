@@ -137,13 +137,17 @@ namespace ntr::gfx {
             cur_height = new_height;
         }
 
-        bool ConvertGraphicsToRgbaImpl(GraphicsToRgbaContext &ctx, const bool do_join_blocks) {
+        Result ConvertGraphicsToRgbaImpl(GraphicsToRgbaContext &ctx, const bool do_join_blocks) {
             const auto plt_clr = reinterpret_cast<const xbgr1555::Color*>(ctx.plt_data);
             // const auto plt_clr_count = plt_data_size / sizeof(xbgr1555::Color);
 
             auto cur_width = ctx.def_width;
             auto cur_height = ctx.def_height;
             ctx.out_rgba = util::NewArray<abgr8888::Color>(cur_width * cur_height);
+
+            ScopeGuard on_fail_cleanup([&]() {
+                delete[] ctx.out_rgba;
+            });
 
             switch(ctx.pix_fmt) {
                 case PixelFormat::A3I5: {
@@ -187,7 +191,7 @@ namespace ntr::gfx {
                     // 2bpp (4 pixels per byte), gfx size must be, at least, (width * height) / 4
                     constexpr u32 bpp = 2;
                     if(!CheckBpp(bpp, ctx.gfx_data_size, ctx.def_width, ctx.def_height)) {
-                        return false;
+                        NTR_R_FAIL(ResultInvalidSizeForPixelFormat);
                     }
                     switch(ctx.char_fmt) {
                         case CharacterFormat::Char: {
@@ -264,7 +268,7 @@ namespace ntr::gfx {
                     // 4bpp (2 pixels per byte), gfx size must be, at least, (width * height) / 2
                     constexpr u32 bpp = 4;
                     if(!CheckBpp(bpp, ctx.gfx_data_size, ctx.def_width, ctx.def_height)) {
-                        return false;
+                        NTR_R_FAIL(ResultInvalidSizeForPixelFormat);
                     }
                     switch(ctx.char_fmt) {
                         case CharacterFormat::Char: {
@@ -328,7 +332,7 @@ namespace ntr::gfx {
                     // 8bpp (a pixel per byte), gfx size must be, at least, width * height
                     constexpr u32 bpp = 8;
                     if(!CheckBpp(bpp, ctx.gfx_data_size, ctx.def_width, ctx.def_height)) {
-                        return false;
+                        NTR_R_FAIL(ResultInvalidSizeForPixelFormat);
                     }
                     switch(ctx.char_fmt) {
                         case CharacterFormat::Char: {
@@ -383,7 +387,7 @@ namespace ntr::gfx {
                 }
                 default: {
                     // TODO: support other formats: 4x4, direct
-                    return false;
+                    NTR_R_FAIL(ResultUnsupportedPixelFormat);
                 }
             }
 
@@ -391,13 +395,13 @@ namespace ntr::gfx {
                 JoinBlocksImpl(cur_width, cur_height, ctx.def_width, ctx.out_rgba);
             }
 
+            on_fail_cleanup.Cancel();
             ctx.out_width = cur_width;
             ctx.out_height = cur_height;
-
-            return true;
+            NTR_R_SUCCEED();
         }
 
-        bool ConvertRgbaToGraphicsImpl(RgbaToGraphicsContext &ctx) {
+        Result ConvertRgbaToGraphicsImpl(RgbaToGraphicsContext &ctx) {
             const auto plt_count = GetPaletteColorCountForPixelFormat(ctx.pix_fmt);
             switch(ctx.pix_fmt) {
                 case PixelFormat::Palette4: {
@@ -409,6 +413,15 @@ namespace ntr::gfx {
                     const auto gfx_size = ComputeNeededSize(bpp, ctx.width, ctx.height);
                     ctx.out_gfx_data = util::NewArray<u8>(gfx_size);
                     ctx.out_gfx_data_size = gfx_size;
+
+                    ScopeGuard on_exit_cleanup([&]() {
+                        delete[] out_plt_allocated;
+                    });
+                    ScopeGuard on_fail_cleanup([&]() {
+                        delete[] ctx.out_plt_data;
+                        delete[] ctx.out_gfx_data;
+                    });
+
                     switch(ctx.char_fmt) {
                         case CharacterFormat::Char: {
                             const auto block_count = ctx.height / TileSize;
@@ -434,19 +447,19 @@ namespace ntr::gfx {
 
                                             u8 plt_idx_1;
                                             if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_1, plt_idx_1)) {
-                                                return false;
+                                                NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                             }
                                             u8 plt_idx_2;
                                             if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_2, plt_idx_2)) {
-                                                return false;
+                                                NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                             }
                                             u8 plt_idx_3;
                                             if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_3, plt_idx_3)) {
-                                                return false;
+                                                NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                             }
                                             u8 plt_idx_4;
                                             if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_4, plt_idx_4)) {
-                                                return false;
+                                                NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                             }
 
                                             const Palette4Value cur_val = {
@@ -478,19 +491,19 @@ namespace ntr::gfx {
 
                                 u8 plt_idx_1;
                                 if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_1, plt_idx_1)) {
-                                    return false;
+                                    NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                 }
                                 u8 plt_idx_2;
                                 if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_2, plt_idx_2)) {
-                                    return false;
+                                    NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                 }
                                 u8 plt_idx_3;
                                 if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_3, plt_idx_3)) {
-                                    return false;
+                                    NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                 }
                                 u8 plt_idx_4;
                                 if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_4, plt_idx_4)) {
-                                    return false;
+                                    NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                 }
 
                                 const Palette4Value cur_val = {
@@ -506,7 +519,8 @@ namespace ntr::gfx {
                             break;
                         }
                     }
-                    delete[] out_plt_allocated;
+                    
+                    on_fail_cleanup.Cancel();
                     break;
                 }
                 case PixelFormat::Palette16: {
@@ -518,6 +532,15 @@ namespace ntr::gfx {
                     const auto gfx_size = ComputeNeededSize(bpp, ctx.width, ctx.height);
                     ctx.out_gfx_data = util::NewArray<u8>(gfx_size);
                     ctx.out_gfx_data_size = gfx_size;
+
+                    ScopeGuard on_exit_cleanup([&]() {
+                        delete[] out_plt_allocated;
+                    });
+                    ScopeGuard on_fail_cleanup([&]() {
+                        delete[] ctx.out_plt_data;
+                        delete[] ctx.out_gfx_data;
+                    });
+
                     switch(ctx.char_fmt) {
                         case CharacterFormat::Char: {
                             const auto block_count = ctx.height / TileSize;
@@ -539,11 +562,11 @@ namespace ntr::gfx {
 
                                             u8 plt_idx_1;
                                             if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_1, plt_idx_1)) {
-                                                return false;
+                                                NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                             }
                                             u8 plt_idx_2;
                                             if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_2, plt_idx_2)) {
-                                                return false;
+                                                NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                             }
 
                                             const Palette16Value cur_val = {
@@ -569,11 +592,11 @@ namespace ntr::gfx {
 
                                 u8 plt_idx_1;
                                 if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_1, plt_idx_1)) {
-                                    return false;
+                                    NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                 }
                                 u8 plt_idx_2;
                                 if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr_2, plt_idx_2)) {
-                                    return false;
+                                    NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                 }
                                 
                                 const Palette16Value cur_val = {
@@ -587,7 +610,8 @@ namespace ntr::gfx {
                             break;
                         }
                     }
-                    delete[] out_plt_allocated;
+                    
+                    on_fail_cleanup.Cancel();
                     break;
                 }
                 case PixelFormat::Palette256: {
@@ -599,6 +623,15 @@ namespace ntr::gfx {
                     const auto gfx_size = ComputeNeededSize(bpp, ctx.width, ctx.height);
                     ctx.out_gfx_data = util::NewArray<u8>(gfx_size);
                     ctx.out_gfx_data_size = gfx_size;
+
+                    ScopeGuard on_exit_cleanup([&]() {
+                        delete[] out_plt_allocated;
+                    });
+                    ScopeGuard on_fail_cleanup([&]() {
+                        delete[] ctx.out_plt_data;
+                        delete[] ctx.out_gfx_data;
+                    });
+
                     switch(ctx.char_fmt) {
                         case CharacterFormat::Char: {
                             const auto block_count = ctx.height / TileSize;
@@ -618,7 +651,7 @@ namespace ntr::gfx {
 
                                             u8 plt_idx;
                                             if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr, plt_idx)) {
-                                                return false;
+                                                NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                             }
 
                                             const Palette256Value cur_val = {
@@ -640,7 +673,7 @@ namespace ntr::gfx {
 
                                 u8 plt_idx;
                                 if(!HandleColorInPalette(out_plt, plt_count, out_plt_allocated, clr, plt_idx)) {
-                                    return false;
+                                    NTR_R_FAIL(ResultColorPaletteAllocationFailure);
                                 }
                                 
                                 const Palette256Value cur_val = {
@@ -653,24 +686,25 @@ namespace ntr::gfx {
                             break;
                         }
                     }
-                    delete[] out_plt_allocated;
+
+                    on_fail_cleanup.Cancel();
                     break;
                 }
                 default: {
                     // TODO: support other formats: a3i5, a5i3, 4x4, direct
-                    return false;
+                    NTR_R_FAIL(ResultUnsupportedPixelFormat);
                 }
             }
 
-            return true;
+            NTR_R_SUCCEED();
         }
 
-        bool ConvertGraphicsToRgbaWithScreenDataImpl(GraphicsToRgbaContext &ctx) {
+        Result ConvertGraphicsToRgbaWithScreenDataImpl(GraphicsToRgbaContext &ctx) {
             if((ctx.pix_fmt != PixelFormat::Palette16) && (ctx.pix_fmt != PixelFormat::Palette256)) {
-                return false;
+                NTR_R_FAIL(ResultInvalidPixelFormat);
             }
             if(ctx.char_fmt != CharacterFormat::Char) {
-                return false;
+                NTR_R_FAIL(ResultInvalidCharacterFormat);
             }
 
             auto scr_data_vals = reinterpret_cast<const ScreenDataValue*>(ctx.scr_data);
@@ -679,6 +713,10 @@ namespace ntr::gfx {
             u32 tmp_width = scr_data_val_count * TileSize;
             u32 tmp_height = TileSize;
             ctx.out_rgba = util::NewArray<abgr8888::Color>(tmp_width * tmp_height);
+
+            ScopeGuard on_fail_cleanup([&]() {
+                delete[] ctx.out_rgba;
+            });
 
             const auto colors_per_plt = GetPaletteColorCountForPixelFormat(ctx.pix_fmt);
             const auto single_plt_size = colors_per_plt * sizeof(xbgr1555::Color);
@@ -691,7 +729,16 @@ namespace ntr::gfx {
                 tmp_conv_array[i] = ctx_copy;
             }
 
-            auto ok = true;
+            ScopeGuard on_exit_cleanup([&]() {
+                for(size_t i = 0; i < plt_count; i++) {
+                    if(tmp_conv_array[i].out_rgba != nullptr) {
+                        delete[] tmp_conv_array[i].out_rgba;
+                    }
+                }
+
+                delete[] tmp_conv_array;
+            });
+
             for(size_t i = 0; i < scr_data_val_count; i++) {
                 const auto cur_val = scr_data_vals[i];
                 if(cur_val.tile_number != 0) {
@@ -716,18 +763,15 @@ namespace ntr::gfx {
                             const auto tmp_rgba_height = tmp_conv_array[cur_val.plt_idx].out_height;
                             auto tmp_rgba = tmp_conv_array[cur_val.plt_idx].out_rgba;
                             if(tmp_rgba == nullptr) {
-                                ok = false;
-                                break;
+                                NTR_R_FAIL(ResultInvalidScreenData);
                             }
                             const auto src_offset = cur_src_x + tmp_rgba_width * cur_src_y;
                             const auto dst_offset = cur_dst_x + tmp_width * cur_dst_y;
                             if(src_offset >= (tmp_rgba_width * tmp_rgba_height)) {
-                                ok = false;
-                                break;
+                                NTR_R_FAIL(ResultInvalidScreenData);
                             }
                             if(dst_offset >= (tmp_width * tmp_height)) {
-                                ok = false;
-                                break;
+                                NTR_R_FAIL(ResultInvalidScreenData);
                             }
                             ctx.out_rgba[dst_offset].raw_val = tmp_rgba[src_offset].raw_val;
                         }
@@ -735,28 +779,18 @@ namespace ntr::gfx {
                 }
             }
 
-            for(size_t i = 0; i < plt_count; i++) {
-                if(tmp_conv_array[i].out_rgba != nullptr) {
-                    delete[] tmp_conv_array[i].out_rgba;
-                }
-            }
-            delete[] tmp_conv_array;
-
-            if(!ok) {
-                delete[] ctx.out_rgba;
-                return false;
-            }
+            on_fail_cleanup.Cancel();
 
             JoinBlocksImpl(tmp_width, tmp_height, ctx.scr_width, ctx.out_rgba);
 
             ctx.out_width = tmp_width;
             ctx.out_height = tmp_height;
-            return true;
+            NTR_R_SUCCEED();
         }
 
     }
 
-    bool ConvertGraphicsToRgba(GraphicsToRgbaContext &ctx) {
+    Result ConvertGraphicsToRgba(GraphicsToRgbaContext &ctx) {
         if(ctx.scr_data != nullptr) {
             return ConvertGraphicsToRgbaWithScreenDataImpl(ctx);
         }
@@ -765,10 +799,10 @@ namespace ntr::gfx {
         }
     }
 
-    bool ConvertRgbaToGraphics(RgbaToGraphicsContext &ctx) {
+    Result ConvertRgbaToGraphics(RgbaToGraphicsContext &ctx) {
         if(ctx.gen_scr_data) {
-            /* TODO: implement this */
-            return false;
+            // TODO: support this
+            NTR_R_FAIL(ResultScreenDataGenerationUnimplemented);
         }
         else {
             return ConvertRgbaToGraphicsImpl(ctx);

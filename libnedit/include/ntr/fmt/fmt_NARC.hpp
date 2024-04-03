@@ -31,7 +31,7 @@ namespace ntr::fmt {
 
         size_t GetBaseOffset() override {
             // Offset after GMIF header, where all file data starts
-            return this->header.header_size + this->fat.block_size + this->fnt.block_size + sizeof(FileImageBlock);
+            return util::AlignUp(this->header.header_size + this->fat.block_size + this->fnt.block_size, 0x4) + sizeof(FileImageBlock);
         }
 
         size_t GetFatEntriesOffset() override {
@@ -42,32 +42,25 @@ namespace ntr::fmt {
             return this->fat.entry_count;
         }
 
-        bool OnFileSystemWrite(fs::BinaryFile &w_bf, const ssize_t size_diff) override {
+        Result OnFileSystemWrite(fs::BinaryFile &w_bf, const ssize_t size_diff) override {
             this->header.file_size += size_diff;
             this->fimg.block_size += size_diff;
 
-            if(!w_bf.SetAbsoluteOffset(0)) {
-                return false;
-            }
-            if(!w_bf.Write(this->header)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.SetAbsoluteOffset(0));
+            NTR_R_TRY(w_bf.Write(this->header));
 
             const auto fimg_offset = this->header.header_size + this->fat.block_size + this->fnt.block_size;
-            if(!w_bf.SetAbsoluteOffset(fimg_offset)) {
-                return false;
-            }
-            if(!w_bf.Write(this->fimg)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.SetAbsoluteOffset(fimg_offset));
+            NTR_R_TRY(w_bf.Write(this->fimg));
 
-            return true;
+            NTR_R_SUCCEED();
         }
         
-        bool ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
     };
 
-    // Note: a CARC file is basically a LZ77-compressed NARC.
+    // Note: a CARC file is basically an LZ-compressed NARC
 
     using NARCFileHandle = nfs::NitroFsFileHandle<NARC>;
 

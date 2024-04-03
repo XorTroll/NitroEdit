@@ -2,34 +2,35 @@
 
 namespace ntr::fmt {
 
-    bool STRM::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+    Result STRM::ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
         fs::BinaryFile bf = {};
-        if(!bf.Open(file_handle, path, fs::OpenMode::Read, comp)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
 
-        if(!bf.Read(this->header)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->header));
         if(!this->header.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultSTRMInvalidHeader);
         }
 
-        if(!bf.Read(this->head)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->head));
         if(!this->head.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultSTRMInvalidHeadSection);
         }
         
-        if(!bf.Read(this->data)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->data));
         if(!this->data.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultSTRMInvalidDataSection);
         }
 
-        return true;
+        NTR_R_SUCCEED();
+    }
+    
+    Result STRM::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+        fs::BinaryFile bf = {};
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
+
+        // TODO: samples
+
+        NTR_R_SUCCEED();
     }
 
 }

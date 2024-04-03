@@ -14,7 +14,7 @@ namespace ntr::gfx {
     constexpr PixelFormat IconPixelFormat = PixelFormat::Palette16;
     constexpr CharacterFormat IconCharacterFormat = CharacterFormat::Char;
 
-    inline bool ConvertBannerIconToRgba(const u8 *icon_char, const u8 *icon_plt, abgr8888::Color *&out_rgba) {
+    inline Result ConvertBannerIconToRgba(const u8 *icon_char, const u8 *icon_plt, abgr8888::Color *&out_rgba) {
         GraphicsToRgbaContext ctx = {
             .gfx_data = icon_char,
             .gfx_data_size = IconCharSize,
@@ -27,18 +27,17 @@ namespace ntr::gfx {
             .char_fmt = IconCharacterFormat,
             .first_color_transparent = true
         };
-        if(!ConvertGraphicsToRgba(ctx)) {
-            return false;
-        }
+        NTR_R_TRY(ConvertGraphicsToRgba(ctx));
+
         if((ctx.out_width != IconWidth) || (ctx.out_height != IconHeight)) {
-            return false;
+            NTR_R_FAIL(ResultUnexpectedBannerIconDimensions);
         }
 
         out_rgba = ctx.out_rgba;
-        return true;
+        NTR_R_SUCCEED();
     }
 
-    inline bool ConvertBannerIconFromRgba(const abgr8888::Color *icon, u8 *&out_icon_char, u8 *&out_icon_plt) {
+    inline Result ConvertBannerIconFromRgba(const abgr8888::Color *icon, u8 *&out_icon_char, u8 *&out_icon_plt) {
         RgbaToGraphicsContext ctx = {
             .rgba_data = icon,
             .width = IconWidth,
@@ -47,16 +46,15 @@ namespace ntr::gfx {
             .char_fmt = IconCharacterFormat,
             .gen_scr_data = false
         };
-        if(!ConvertRgbaToGraphics(ctx)) {
-            return false;
-        }
+        NTR_R_TRY(ConvertRgbaToGraphics(ctx));
+        
         if((ctx.out_gfx_data_size != IconCharSize) || (ctx.out_plt_data_size != IconPaletteSize)) {
-            return false;
+            NTR_R_FAIL(ResultUnexpectedBannerIconDimensions);
         }
 
         out_icon_char = ctx.out_gfx_data;
         out_icon_plt = ctx.out_plt_data;
-        return true;
+        NTR_R_SUCCEED();
     }
 
 }

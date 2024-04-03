@@ -1,4 +1,5 @@
 #include <ntr/fs/fs_Stdio.hpp>
+#include <unistd.h>
 
 namespace ntr::fs {
 
@@ -34,59 +35,100 @@ namespace ntr::fs {
         return false;
     }
 
-    bool StdioFileHandle::Open(const std::string &path, const OpenMode mode) {
+    Result StdioFileHandle::Open(const std::string &path, const OpenMode mode) {
         const auto f_mode = GetOpenMode(mode);
         if(f_mode == nullptr) {
-            return false;
+            NTR_R_FAIL(ResultInvalidFileOpenMode);
         }
+
         this->file = fopen(path.c_str(), f_mode);
-        return this->file != nullptr;
+        if(this->file == nullptr) {
+            NTR_R_FAIL(ResultUnableToOpenStdioFile);
+        }
+        else {
+            NTR_R_SUCCEED();
+        }
     }
 
-    size_t StdioFileHandle::GetSize() {
+    Result StdioFileHandle::GetSize(size_t &out_size) {
         const auto cur_pos = ftell(this->file);
-        fseek(this->file, 0, SEEK_END);
+        if(fseek(this->file, 0, SEEK_END) != 0) {
+            NTR_R_FAIL(ResultUnableToSeekStdioFile);
+        }
         const auto f_size = ftell(this->file);
-        fseek(this->file, cur_pos, SEEK_SET);
-        return f_size;
+        if(fseek(this->file, cur_pos, SEEK_SET) != 0) {
+            NTR_R_FAIL(ResultUnableToSeekStdioFile);
+        }
+
+        out_size = f_size;
+        NTR_R_SUCCEED();
     }
 
-    bool StdioFileHandle::SetOffset(const size_t offset, const Position pos) {
+    Result StdioFileHandle::SetOffset(const size_t offset, const Position pos) {
+        int whence;
         switch(pos) {
             case Position::Begin: {
-                return fseek(this->file, offset, SEEK_SET) == 0;
+                whence = SEEK_SET;
+                break;
             }
             case Position::Current: {
-                return fseek(this->file, offset, SEEK_CUR) == 0;
-            }
-            case Position::End: {
-                return fseek(this->file, offset, SEEK_END) == 0;
+                whence = SEEK_CUR;
+                break;
             }
             default: {
-                return false;
+                NTR_R_FAIL(ResultInvalidSeekPosition);
             }
+        }
+
+        if(fseek(this->file, offset, whence) != 0) {
+            NTR_R_FAIL(ResultUnableToSeekStdioFile);
+        }
+        else {
+            NTR_R_SUCCEED();
         }
     }
 
-    size_t StdioFileHandle::GetOffset() {
-        return ftell(this->file);
+    Result StdioFileHandle::GetOffset(size_t &out_offset) {
+        out_offset = ftell(this->file);
+        NTR_R_SUCCEED();
     }
 
-    bool StdioFileHandle::Read(void *read_buf, const size_t read_size) {
-        return fread(read_buf, read_size, 1, this->file) == 1;
+    Result StdioFileHandle::Read(void *read_buf, const size_t read_size, size_t &out_read_size) {
+        const auto got_read_size = fread(read_buf, 1, read_size, this->file);
+        if(got_read_size == 0) {
+            NTR_R_FAIL(ResultUnableToReadStdioFile);
+        }
+        else {
+            out_read_size = got_read_size;
+            NTR_R_SUCCEED();
+        }
     }
 
-    bool StdioFileHandle::Write(const void *write_buf, const size_t write_size) {
-        return fwrite(write_buf, write_size, 1, this->file) == 1;
+    Result StdioFileHandle::Write(const void *write_buf, const size_t write_size) {
+        if(fwrite(write_buf, write_size, 1, this->file) != 1) {
+            NTR_R_FAIL(ResultUnableToWriteStdioFile);
+        }
+        else {
+            NTR_R_SUCCEED();
+        }
     }
 
-    bool StdioFileHandle::Close() {
-        const auto res = fclose(this->file);
+    Result StdioFileHandle::Close() {
+        if(this->file == nullptr) {
+            NTR_R_FAIL(ResultInvalidFile);
+        }
+        
+        auto cur_file = this->file;
         this->file = nullptr;
-        return res == 0;
+        if(fclose(cur_file) != 0) {
+            NTR_R_FAIL(ResultUnableToCloseStdioFile);
+        }
+        else {
+            NTR_R_SUCCEED();
+        }
     }
 
-    bool CreateStdioDirectory(const std::string &dir) {
+    Result CreateStdioDirectory(const std::string &dir) {
         auto pos_init = 0;
         auto pos_found = 0;
 
@@ -104,11 +146,11 @@ namespace ntr::fs {
             cur_dir += token;
             if(mkdir(cur_dir.c_str(), 777) != 0) {
                 if(errno != EEXIST) {
-                    return false;
+                    NTR_R_FAIL(ResultUnableToCreateStdioDirectory);
                 }
             }
         }
-        return true;
+        NTR_R_SUCCEED();
     }
 
     bool IsStdioFile(const std::string &path) {
@@ -121,24 +163,28 @@ namespace ntr::fs {
         return false;
     }
 
-    size_t GetStdioFileSize(const std::string &path) {
+    Result GetStdioFileSize(const std::string &path, size_t &out_size) {
         struct stat st;
         if(stat(path.c_str(), &st) == 0) {
             if(st.st_mode & S_IFREG) {
-                return st.st_size;
+                out_size = st.st_size;
+                NTR_R_SUCCEED();
             }
         }
-        return 0;
+
+        NTR_R_FAIL(ResultUnableToOpenStdioFile);
     }
 
-    bool DeleteStdioFile(const std::string &path) {
-        return remove(path.c_str()) == 0;
+    Result DeleteStdioFile(const std::string &path) {
+        if(remove(path.c_str()) != 0) {
+            NTR_R_FAIL(ResultUnableToDeleteStdioFile);
+        }
+        else {
+            NTR_R_SUCCEED();
+        }
     }
 
-    bool DeleteStdioDirectory(const std::string &path) {
-        // Note: not using rmdir since libnds's libfat doesn't support it :P
-        // return rmdir(path.c_str()) == 0;
-
+    Result DeleteStdioDirectory(const std::string &path) {
         auto dir = opendir(path.c_str());
         if(dir) {
             std::vector<std::string> subfiles;
@@ -164,21 +210,19 @@ namespace ntr::fs {
             }
             closedir(dir);
             for(const auto &subfile : subfiles) {
-                if(!DeleteStdioFile(subfile)) {
-                    return false;
-                }
+                NTR_R_TRY(DeleteStdioFile(subfile));
             }
             for(const auto &subdir : subdirs) {
-                if(!DeleteStdioDirectory(subdir)) {
-                    return false;
-                }
+                NTR_R_TRY(DeleteStdioDirectory(subdir));
             }
         }
 
-        return true;
+        // Note: intentionally not checking this result since it will fail with NDS/libfat
+        /* int res = */ rmdir(path.c_str());
+        NTR_R_SUCCEED();
     }
 
-    bool ListAllStdioFiles(const std::string &path, std::vector<std::string> &out_files) {
+    Result ListAllStdioFiles(const std::string &path, std::vector<std::string> &out_files) {
         auto dir = opendir(path.c_str());
         if(dir) {
             std::vector<std::string> subdirs;
@@ -203,12 +247,10 @@ namespace ntr::fs {
             }
             closedir(dir);
             for(const auto &subdir : subdirs) {
-                if(!ListAllStdioFiles(subdir, out_files)) {
-                    return false;
-                }
+                NTR_R_TRY(ListAllStdioFiles(subdir, out_files));
             }
         }
-        return true;
+        NTR_R_SUCCEED();
     }
 
 }

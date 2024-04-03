@@ -2,42 +2,37 @@
 
 namespace ntr::fmt {
 
-    bool NSCR::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+    Result NSCR::ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
         fs::BinaryFile bf;
-        if(!bf.Open(file_handle, path, fs::OpenMode::Read, comp)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
 
-        if(!bf.Read(this->header)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->header));
         if(!this->header.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultNSCRInvalidHeader);
         }
 
-        if(!bf.Read(this->screen_data)) {
-            return false;
-        }
+        NTR_R_TRY(bf.Read(this->screen_data));
         if(!this->screen_data.IsValid()) {
-            return false;
+            NTR_R_FAIL(ResultNSCRInvalidScreenDataBlock);
         }
 
-        if(!bf.SetAbsoluteOffset(sizeof(Header) + sizeof(ScreenDataBlock))) {
-            return false;
-        }
-        this->data = util::NewArray<u8>(this->screen_data.data_size);
-        if(!bf.ReadData(this->data, this->screen_data.data_size)) {
-            delete[] this->data;
-            this->data = nullptr;
-            return false;
-        }
-
-        return true;
+        NTR_R_SUCCEED();
     }
 
-    bool NSCR::WriteImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
-        /* TODO */
-        return false;
+    Result NSCR::ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) {
+        fs::BinaryFile bf;
+        NTR_R_TRY(bf.Open(file_handle, path, fs::OpenMode::Read, comp));
+
+        NTR_R_TRY(bf.SetAbsoluteOffset(sizeof(Header) + sizeof(ScreenDataBlock)));
+        this->data = util::NewArray<u8>(this->screen_data.data_size);
+        ScopeGuard on_fail_cleanup([&]() {
+            delete[] this->data;
+        });
+
+        NTR_R_TRY(bf.ReadDataExact(this->data, this->screen_data.data_size));
+
+        on_fail_cleanup.Cancel();
+        NTR_R_SUCCEED();
     }
 
 }

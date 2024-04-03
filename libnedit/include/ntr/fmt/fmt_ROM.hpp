@@ -9,15 +9,34 @@ namespace ntr::fmt {
 
     struct ROM : public nfs::NitroFsFileFormat {
 
+        // TODO: use this
+        enum class NDSRegion : u8 {
+            Normal = 0x00,
+            Korea = 0x40,
+            China = 0x80
+        };
+
+        enum class UnitCode : u8 {
+            NDS = 0x00,
+            NDS_NDSi = 0x02,
+            NDSi = 0x03
+        };
+
         struct Header {
             char game_title[12];
             char game_code[4];
             char maker_code[2];
-            u8 unit_code;
-            u8 enc_seed_select;
+            UnitCode unit_code;
+            u8 encryption_seed_select;
             u8 device_capacity;
             u8 reserved_1[7];
-            u16 game_revision;
+            union {
+                u16 ndsi_game_revision;
+                struct {
+                    u8 reserved;
+                    u8 region;
+                } nds;
+            } game_revision;
             u8 version;
             u8 flags;
             u32 arm9_rom_offset;
@@ -44,7 +63,7 @@ namespace ntr::fmt {
             u32 arm9_autoload;
             u32 arm7_autoload;
             u64 secure_disable;
-            u32 ntr_size;
+            u32 ntr_region_size;
             u32 header_size;
             u8 reserved_2[56];
             u8 nintendo_logo[156];
@@ -78,6 +97,7 @@ namespace ntr::fmt {
                 return util::SetNonNullTerminatedCString(this->maker_code, maker_code_str);
             }
         };
+        static_assert(sizeof(Header) == 0x180);
 
         static constexpr u32 GameTitleLength = 128;
 
@@ -110,7 +130,8 @@ namespace ntr::fmt {
         ROM() {}
         ROM(const ROM&) = delete;
 
-        bool HasAlignmentBetweenFileData() override {
+        bool GetAlignmentBetweenFileData(size_t &out_align) override {
+            out_align = 0x200;
             return true;
         }
 
@@ -122,9 +143,10 @@ namespace ntr::fmt {
             return this->header.fat_size / sizeof(nfs::FileAllocationTableEntry);
         }
 
-        bool OnFileSystemWrite(fs::BinaryFile &w_bf, const ssize_t size_diff) override {
-            const auto actual_rom_size = w_bf.GetAbsoluteOffset();
-            this->header.ntr_size += size_diff;
+        Result OnFileSystemWrite(fs::BinaryFile &w_bf, const ssize_t size_diff) override {
+            size_t actual_rom_size;
+            NTR_R_TRY(w_bf.GetAbsoluteOffset(actual_rom_size));
+            this->header.ntr_region_size += size_diff;
             auto capacity_size = actual_rom_size;
             capacity_size |= capacity_size >> 16;
             capacity_size |= capacity_size >> 8;
@@ -142,24 +164,17 @@ namespace ntr::fmt {
             }
             this->header.device_capacity = (capacity < 0) ? 0 : static_cast<u8>(capacity);
 
-            if(!w_bf.SetAbsoluteOffset(0)) {
-                return false;
-            }
-            if(!w_bf.Write(this->header)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.SetAbsoluteOffset(0));
+            NTR_R_TRY(w_bf.Write(this->header));
 
-            if(!w_bf.SetAbsoluteOffset(this->header.banner_offset)) {
-                return false;
-            }
-            if(!w_bf.Write(this->banner)) {
-                return false;
-            }
+            NTR_R_TRY(w_bf.SetAbsoluteOffset(this->header.banner_offset));
+            NTR_R_TRY(w_bf.Write(this->banner));
 
-            return true;
+            NTR_R_SUCCEED();
         }
         
-        bool ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
+        Result ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
     };
 
     using ROMFileHandle = nfs::NitroFsFileHandle<ROM>;

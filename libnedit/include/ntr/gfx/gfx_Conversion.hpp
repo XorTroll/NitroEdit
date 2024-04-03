@@ -25,7 +25,7 @@ namespace ntr::gfx {
         u32 out_height;
     };
 
-    bool ConvertGraphicsToRgba(GraphicsToRgbaContext &ctx);
+    Result ConvertGraphicsToRgba(GraphicsToRgbaContext &ctx);
 
     struct RgbaToGraphicsContext {
         const abgr8888::Color *rgba_data;
@@ -43,6 +43,6 @@ namespace ntr::gfx {
         size_t out_scr_data_size;
     };
 
-    bool ConvertRgbaToGraphics(RgbaToGraphicsContext &ctx);
+    Result ConvertRgbaToGraphics(RgbaToGraphicsContext &ctx);
 
 }
