@@ -98,19 +98,17 @@ Like with most DS(i) homebrew projects, this project basically requires devkitAR
 
 ### libnedit
 
-- Improve loading/saving times, can't do much better due to technical limitations existing ROM editors don't have...
-
 - Implement saving texture as NCGR+NCLR+NSCR
 
 - Implement saving in utility.bin files
 
 - Support other formats within SDATs (STRM, SSEQ, etc.)
 
-- Models and model textures (NSBMD, NSBTX), maybe support editing those textures at least?
+- Models and model textures (NSBMD, NSBTX)
 
 - Support for remaining BMG message encodings
 
-- Proper BMG escape support for messages using it
+- Proper BMG special character support for messages using it
 
 - For multiple palette NCGR+NCLR textures, allow choosing the palette to load
 
@@ -120,9 +118,19 @@ Like with most DS(i) homebrew projects, this project basically requires devkitAR
 
 ### NitroEdit (DS)
 
-- Polish graphics
+- Try to improve loading/saving times, but can't do much better due to technical limitations...
+
+- Consider using direct framebuffer drawing instead of using sprites
+
+- Consider using specially converted textures instead of loading PNGs
+
+- Support for exporting files/directories to some output directory (like GodMode9 does)
+
+- Polish graphics in general
 
 - Detect file formats with a better system than just checking the extension (checking headers, etc.) (done in libnedit)
+
+- Support for NSBTX editing
 
 - Implement zoom for large textures in the graphic editor
 
@@ -132,7 +140,9 @@ Like with most DS(i) homebrew projects, this project basically requires devkitAR
 
 - File exporting and importing support from NitroFs filesystems?
 
-- Support more special characters (é, à, etc.) on the keyboard.
+- Support more special characters (é, à, etc.) on the keyboard
+
+- Use special icon for compressed files
 
 ### NitroEdit (PC)
 
