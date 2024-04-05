@@ -14,15 +14,17 @@ namespace ntr::util {
         return convert.from_bytes(str);
     }
 
-    inline bool ConvertStringToNumber(const std::string &str, u32 &out_num) {
-        const auto is_num = !str.empty() && std::find_if(str.begin(), str.end(), [](const char &c) {
-            return !std::isdigit(c);
-        }) == str.end();
-
-        if(is_num) {
-            out_num = static_cast<u32>(std::stoi(str));
+    inline bool ConvertStringToNumber(const std::string &str, u32 &out_num, const u32 base = 10) {
+        errno = 0;
+        char *end_ptr;
+        const auto res = std::strtoul(str.c_str(), &end_ptr, base);
+        if((errno != 0) || (end_ptr == str.c_str())) {
+            return false;
         }
-        return is_num;
+        else {
+            out_num = res;
+            return true;
+        }
     }
 
     template<size_t N, typename C>

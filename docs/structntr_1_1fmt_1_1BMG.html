@@ -106,6 +106,12 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structntr_1_1fmt_1_1BMG_1_1Message.html">Message</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structntr_1_1fmt_1_1BMG_1_1MessageEscape.html">MessageEscape</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structntr_1_1fmt_1_1BMG_1_1MessageIdSection.html">MessageIdSection</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structntr_1_1fmt_1_1BMG_1_1MessageToken.html">MessageToken</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
@@ -115,12 +121,19 @@ Public Types</h2></td></tr>
 , <b>UTF8</b> = 4
  }</td></tr>
 <tr class="separator:af4a83cd29aa59138374ab55698856966"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afd701f4f35d87d8779e53a218d12d15a" id="r_afd701f4f35d87d8779e53a218d12d15a"><td class="memItemLeft" align="right" valign="top"><a id="afd701f4f35d87d8779e53a218d12d15a" name="afd701f4f35d87d8779e53a218d12d15a"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>MessageTokenType</b> : u8 { <b>Text</b>
+, <b>Escape</b>
+ }</td></tr>
+<tr class="separator:afd701f4f35d87d8779e53a218d12d15a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:aaf9d49702b81e7a392d3f43e10f1608a" id="r_aaf9d49702b81e7a392d3f43e10f1608a"><td class="memItemLeft" align="right" valign="top"><a id="aaf9d49702b81e7a392d3f43e10f1608a" name="aaf9d49702b81e7a392d3f43e10f1608a"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>BMG</b> (const <a class="el" href="structntr_1_1fmt_1_1BMG.html">BMG</a> &amp;)=delete</td></tr>
 <tr class="separator:aaf9d49702b81e7a392d3f43e10f1608a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa55024bf768f3648018243d3b2b6f7a8" id="r_aa55024bf768f3648018243d3b2b6f7a8"><td class="memItemLeft" align="right" valign="top"><a id="aa55024bf768f3648018243d3b2b6f7a8" name="aa55024bf768f3648018243d3b2b6f7a8"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>HasMessageIds</b> ()</td></tr>
+<tr class="separator:aa55024bf768f3648018243d3b2b6f7a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4f4897ee907b6f0831e8a93ba9edb1c8" id="r_a4f4897ee907b6f0831e8a93ba9edb1c8"><td class="memItemLeft" align="right" valign="top"><a id="a4f4897ee907b6f0831e8a93ba9edb1c8" name="a4f4897ee907b6f0831e8a93ba9edb1c8"></a>
 <a class="el" href="structntr_1_1Result.html">Result</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CreateFrom</b> (const Encoding enc, const size_t attr_size, const std::vector&lt; <a class="el" href="structntr_1_1fmt_1_1BMG_1_1Message.html">Message</a> &gt; &amp;msgs, const u32 file_id, const ntr::fs::FileCompression comp=ntr::fs::FileCompression::None)</td></tr>
 <tr class="separator:a4f4897ee907b6f0831e8a93ba9edb1c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -164,6 +177,9 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:aa5db7b4eea8f720c54f44f70153dd04d" id="r_aa5db7b4eea8f720c54f44f70153dd04d"><td class="memItemLeft" align="right" valign="top"><a id="aa5db7b4eea8f720c54f44f70153dd04d" name="aa5db7b4eea8f720c54f44f70153dd04d"></a>
 <a class="el" href="structntr_1_1fmt_1_1BMG_1_1DataSection.html">DataSection</a>&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
 <tr class="separator:aa5db7b4eea8f720c54f44f70153dd04d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a59e3da8d5c0bcb19d716ab7992321035" id="r_a59e3da8d5c0bcb19d716ab7992321035"><td class="memItemLeft" align="right" valign="top"><a id="a59e3da8d5c0bcb19d716ab7992321035" name="a59e3da8d5c0bcb19d716ab7992321035"></a>
+std::optional&lt; <a class="el" href="structntr_1_1fmt_1_1BMG_1_1MessageIdSection.html">MessageIdSection</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>msg_id</b></td></tr>
+<tr class="separator:a59e3da8d5c0bcb19d716ab7992321035"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa74aa26893c6c55e09a6849d53d8cd55" id="r_aa74aa26893c6c55e09a6849d53d8cd55"><td class="memItemLeft" align="right" valign="top"><a id="aa74aa26893c6c55e09a6849d53d8cd55" name="aa74aa26893c6c55e09a6849d53d8cd55"></a>
 std::vector&lt; <a class="el" href="structntr_1_1fmt_1_1BMG_1_1Message.html">Message</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>messages</b></td></tr>
 <tr class="separator:aa74aa26893c6c55e09a6849d53d8cd55"><td class="memSeparator" colspan="2">&#160;</td></tr>

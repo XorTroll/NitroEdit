@@ -205,16 +205,12 @@ namespace ntr::fs {
             }
 
             inline Result WriteEnsureAlignment(const size_t align, size_t &out_pad_size) {
-                size_t cur_file_size;
-                out_pad_size = 0;
-                while(true) {
-                    NTR_R_TRY(this->GetAbsoluteOffset(cur_file_size));
-                    if(!util::IsAlignedTo(cur_file_size, align)) {
-                        break;
-                    }
+                size_t cur_offset;
+                NTR_R_TRY(this->GetAbsoluteOffset(cur_offset));
+                out_pad_size = util::AlignUp(cur_offset, align) - cur_offset;
 
+                for(size_t i = 0; i < out_pad_size; i++) {
                     NTR_R_TRY(this->Write<u8>(0));
-                    out_pad_size++;
                 }
                 NTR_R_SUCCEED();
             }

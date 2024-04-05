@@ -5,6 +5,7 @@
 #include <ntr/util/util_String.hpp>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
 
 namespace {
 
@@ -24,6 +25,114 @@ namespace {
             }
         }
         return "<unk>";
+    }
+
+    std::string FormatEscape(const ntr::fmt::BMG::MessageEscape &esc) {
+        std::stringstream strm;
+        strm << "{";
+        for(ntr::u32 i = 0; i < esc.esc_data.size(); i++) {
+            strm << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<ntr::u32>(esc.esc_data.at(i));
+            if((i + 1) < esc.esc_data.size()) {
+                strm << "-";
+            }
+        }
+        strm << "}";
+        return strm.str();
+    }
+
+    bool BuildMessage(const std::string &input, ntr::fmt::BMG::Message &out_msg) {
+        out_msg = {};
+        ntr::fmt::BMG::MessageToken cur_token = {};
+        std::string cur_escape_byte;
+
+        #define _NEDIT_MOD_BMG_MSG_BUILD_CHECK_PUSH_TEXT_TOKEN \
+            if(cur_token.text.length() > 0) { \
+                cur_token.type = ntr::fmt::BMG::MessageTokenType::Text; \
+                out_msg.msg.push_back(cur_token); \
+            }
+
+        #define _NEDIT_MOD_BMG_MSG_BUILD_PUSH_ESCAPE_BYTE \
+            try { \
+                int byte = std::stoi(cur_escape_byte, nullptr, 16); \
+                cur_token.escape.esc_data.push_back(byte & 0xFF); \
+                cur_escape_byte = ""; \
+            } \
+            catch(std::exception&) { \
+                std::cerr << "Formatting error: invalid escape byte supplied (" << cur_escape_byte << "), they must be in hexadecimal like here: {FF-00-AA-12}" << std::endl; \
+                return false; \
+            }
+
+        for(const auto &ch: input) {
+            if(ch == '{') {
+                if(cur_token.type == ntr::fmt::BMG::MessageTokenType::Escape) {
+                    std::cerr << "Formatting error: parsed escape opening symbol '{' with an already opened escape" << std::endl;
+                    return false;
+                }
+
+                _NEDIT_MOD_BMG_MSG_BUILD_CHECK_PUSH_TEXT_TOKEN
+                cur_token = {
+                    .type = ntr::fmt::BMG::MessageTokenType::Escape
+                };
+            }
+            else if(ch == '}') {
+                if(cur_token.type != ntr::fmt::BMG::MessageTokenType::Escape) {
+                    std::cerr << "Formatting error: parsed escape closing symbol '}' without any previous escape opening symbol '{'" << std::endl;
+                    return false;
+                }
+
+                if(!cur_escape_byte.empty()) {
+                    _NEDIT_MOD_BMG_MSG_BUILD_PUSH_ESCAPE_BYTE
+                }
+
+                out_msg.msg.push_back(cur_token);
+                cur_token = {};
+            }
+            else if(ch == '-') {
+                if(cur_token.type != ntr::fmt::BMG::MessageTokenType::Escape) {
+                    std::cerr << "Formatting error: parsed escape closing symbol '}' without any previous escape opening symbol '{'" << std::endl;
+                    return false;
+                }
+                if(cur_escape_byte.empty()) {
+                    std::cerr << "Formatting error: found empty escape byte" << std::endl;
+                    return false;
+                }
+
+                _NEDIT_MOD_BMG_MSG_BUILD_PUSH_ESCAPE_BYTE
+            }
+            else {
+                if(cur_token.type == ntr::fmt::BMG::MessageTokenType::Escape) {
+                    cur_escape_byte += ch;
+                }
+                else {
+                    cur_token.text += ch;
+                }
+            }
+        }
+
+        if(cur_token.type == ntr::fmt::BMG::MessageTokenType::Escape) {
+            std::cerr << "Formatting error: reached end with unclosed escape" << std::endl;
+            return false;
+        }
+
+        _NEDIT_MOD_BMG_MSG_BUILD_CHECK_PUSH_TEXT_TOKEN
+
+        return true;
+    }
+
+    void PrintMessage(const ntr::fmt::BMG::Message &msg) {
+        for(const auto &msg_token: msg.msg) {
+            switch(msg_token.type) {
+                case ntr::fmt::BMG::MessageTokenType::Escape: {
+                    std::cout << FormatEscape(msg_token.escape);
+                    break;
+                }
+                case ntr::fmt::BMG::MessageTokenType::Text: {
+                    const auto utf8_text = ntr::util::ConvertFromUnicode(msg_token.text);
+                    std::cout << utf8_text;
+                    break;
+                }
+            }
+        }
     }
 
     bool ReadEncoding(const std::string &enc_str, ntr::fmt::BMG::Encoding &out_enc) {
@@ -52,8 +161,7 @@ namespace {
                 std::cout << " - Messages:" << std::endl;
             }
             for(const auto &msg: bmg.messages) {
-                const auto utf8_str = ntr::util::ConvertFromUnicode(msg.msg_str);
-                std::cout << utf8_str;
+                PrintMessage(msg);
 
                 if(verbose) {
                     if(bmg.info.GetAttributesSize() > 0) {
@@ -62,6 +170,7 @@ namespace {
                             std::cout << std::hex << std::setfill('0') << std::setw(2) << static_cast<ntr::u32>(attr_byte);
                         }
                         std::cout << ")";
+                        
                     }
                 }
 
@@ -93,9 +202,8 @@ namespace {
         if(rc.IsSuccess()) {
             if(idx < bmg.messages.size()) {
                 const auto &msg = bmg.messages.at(idx);
-
-                const auto utf8_str = ntr::util::ConvertFromUnicode(msg.msg_str);
-                std::cout << utf8_str << std::endl;
+                PrintMessage(msg);
+                std::cout << std::endl;
             }
             else {
                 std::cerr << "Invalid index supplied (out of bounds): BMG only has " << bmg.messages.size() << " messages..." << std::endl;
@@ -123,10 +231,12 @@ namespace {
         std::vector<ntr::fmt::BMG::Message> msgs;
         std::string txt_str;
         while(std::getline(ifs, txt_str)) {
-            const ntr::fmt::BMG::Message msg = {
-                .msg_str = ntr::util::ConvertToUnicode(txt_str),
-                .attrs = {}
-            };
+            ntr::fmt::BMG::Message msg;
+
+            if(!BuildMessage(txt_str, msg)) {
+                return;
+            }
+
             msgs.push_back(msg);
         }
 

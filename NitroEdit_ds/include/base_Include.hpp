@@ -16,6 +16,11 @@ constexpr ntr::Result ResultUiSpriteInvalidGraphicsData = 0xa003;
 constexpr ntr::Result ResultUiUnableToLoadFont = 0xa004;
 constexpr ntr::Result ResultUiLodepngDecodeError = 0xa005;
 
+constexpr ntr::Result ResultEditBMGInvalidEscapeByte = 0xa101;
+constexpr ntr::Result ResultEditBMGUnexpectedEscapeOpen = 0xa101;
+constexpr ntr::Result ResultEditBMGUnexpectedEscapeClose = 0xa101;
+constexpr ntr::Result ResultEditBMGUnclosedEscape = 0xa101;
+
 constexpr std::pair<ntr::Result, const char*> ResultDescriptionTable[] = {
     { ResultUiSpriteNotCreated, "UI sprite not created before loading" },
     { ResultUiUnableToAllocateSpriteIndex, "Unable to allocate UI sprite index" },

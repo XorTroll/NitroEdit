@@ -15,6 +15,8 @@
 #include <climits>
 #include <cmath>
 #include <stack>
+#include <optional>
+#include <iomanip>
 
 #define ATTR_PACKED __attribute__((packed))
 
@@ -127,7 +129,10 @@ namespace ntr {
     constexpr Result ResultBMGInvalidInfoSection = 0x0402;
     constexpr Result ResultBMGInvalidDataSection = 0x0403;
     constexpr Result ResultBMGInvalidUnsupportedCharacterFormat = 0x0404;
-    constexpr Result ResultBMGInvalidMessageAttributes = 0x0405;
+    constexpr Result ResultBMGInvalidMessageAttributeSize = 0x0405;
+    constexpr Result ResultBMGInvalidEscapeSequence = 0x0406;
+    constexpr Result ResultBMGUnexpectedSectionCount = 0x0407;
+    constexpr Result ResultBMGInvalidMessageIdSection = 0x0408;
 
     constexpr Result ResultNCGRInvalidHeader = 0x0501;
     constexpr Result ResultNCGRInvalidCharacterDataBlock = 0x0502;
@@ -214,10 +219,13 @@ namespace ntr {
         { ResultNitroFsFileNotFound, "NitroFs file not found" },
 
         { ResultBMGInvalidHeader, "Invalid BMG header" },
-        { ResultBMGInvalidInfoSection, "Invalid BMG INFO section" },
-        { ResultBMGInvalidDataSection, "Invalid BMG DATA section" },
+        { ResultBMGInvalidInfoSection, "Invalid BMG INF1 section" },
+        { ResultBMGInvalidDataSection, "Invalid BMG DAT1 section" },
         { ResultBMGInvalidUnsupportedCharacterFormat, "Unsupported BMG character format" },
-        { ResultBMGInvalidMessageAttributes, "Invalid BMG message attributes" },
+        { ResultBMGInvalidMessageAttributeSize, "Invalid BMG message attributes" },
+        { ResultBMGInvalidEscapeSequence, "Invalid BMG escape sequence" },
+        { ResultBMGUnexpectedSectionCount, "Unexpected BMG section count (< 2)" },
+        { ResultBMGInvalidMessageIdSection, "Invalid BMG MID1 section" },
 
         { ResultNCGRInvalidHeader, "Invalid NCGR header" },
         { ResultNCGRInvalidCharacterDataBlock, "Invalid NCGR character data block" },
