@@ -13,31 +13,16 @@ namespace {
         const QString cmd = args.first();
         args.pop_front();
 
-        std::vector<QString> avail_modules;
+        auto ok = false;
         for(const auto &module: nedit::mod::GetModules()) {
-            if(module.symbols.provides_cmd_fn(cmd)) {
-                avail_modules.push_back(module.meta.name);
+            if(module.symbols.try_handle_cmd_fn(cmd, args)) {
+                ok = true;
+                break; 
             }
         }
 
-        if(avail_modules.empty()) {
-            qDebug() << "Unknown command...";
-            return 1;
-        }
-        else if(avail_modules.size() > 1) {
-            qDebug() << "Multiple modules serve this command:";
-            for(const auto &mod: avail_modules) {
-                qDebug() << "> " << mod << "";
-            }
-            qDebug() << "Cannot run due to ambiguity...";
-            return 1;
-        }
-        else {
-            for(const auto &module: nedit::mod::GetModules()) {
-                if(module.symbols.provides_cmd_fn(cmd)) {
-                    module.symbols.handle_cmd_fn(cmd, args); 
-                }
-            }
+        if(!ok) {
+            qWarning() << "No match for command '" << cmd << "'... do you have the required module installed?";
         }
 
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
@@ -45,7 +30,7 @@ namespace {
     }
 
     int UiMain(QApplication &app) {
-        nedit::ui::MainWindow win;
+        ui::MainWindow win;
         win.show();
 
         return app.exec();
@@ -55,6 +40,7 @@ namespace {
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
+    InitializeResults();
     nedit::mod::LoadModules();
 
     if(argc > 1) {

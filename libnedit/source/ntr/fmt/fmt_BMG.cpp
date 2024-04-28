@@ -13,7 +13,7 @@ namespace ntr::fmt {
             switch(enc) {
                 case BMG::Encoding::CP1252: {
                     // TODO: unsupported yet
-                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedEncoding);
                 }
                 case BMG::Encoding::UTF16: {
                     NTR_R_TRY(bf.Read(out_ch));
@@ -27,7 +27,7 @@ namespace ntr::fmt {
                 }
                 case BMG::Encoding::ShiftJIS: {
                     // TODO: unsupported yet
-                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedEncoding);
                 }
             }
 
@@ -38,7 +38,7 @@ namespace ntr::fmt {
             switch(enc) {
                 case BMG::Encoding::CP1252: {
                     // TODO: unsupported yet
-                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedEncoding);
                 }
                 case BMG::Encoding::UTF16: {
                     NTR_R_TRY(bf.Write(ch));
@@ -50,7 +50,7 @@ namespace ntr::fmt {
                 }
                 case BMG::Encoding::ShiftJIS: {
                     // TODO: unsupported yet
-                    NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
+                    NTR_R_FAIL(ResultBMGInvalidUnsupportedEncoding);
                 }
             }
 
@@ -59,7 +59,7 @@ namespace ntr::fmt {
 
     }
 
-    Result BMG::CreateFrom(const Encoding enc, const size_t attr_size, const std::vector<Message> &msgs, const u32 file_id, const ntr::fs::FileCompression comp) {
+    Result BMG::CreateFrom(const Encoding enc, const bool has_message_ids, const size_t attr_size, const std::vector<Message> &msgs, const u32 file_id, const ntr::fs::FileCompression comp) {
         // The rest of the fields will be automatically set when writing
         this->comp = comp;
 
@@ -70,11 +70,16 @@ namespace ntr::fmt {
         this->header.unk_4 = 0;
         this->header.unk_5 = 0;
 
-        this->info.entry_size = InfoSection::OffsetSize + attr_size;
+        this->info.SetAttributesSize(attr_size);
         this->info.file_id = file_id;
         this->messages = msgs;
 
-        this->msg_id = {};
+        if(has_message_ids) {
+            this->msg_id.emplace();
+        }
+        else {
+            this->msg_id = {};
+        }
 
         NTR_R_SUCCEED();
     }
@@ -96,8 +101,8 @@ namespace ntr::fmt {
             NTR_R_FAIL(ResultBMGInvalidInfoSection);
         }
 
-        if(GetCharacterSize(this->header.encoding) == 0) {
-            NTR_R_FAIL(ResultBMGInvalidUnsupportedCharacterFormat);
+        if(!IsValidEncoding(this->header.encoding)) {
+            NTR_R_FAIL(ResultBMGInvalidUnsupportedEncoding);
         }
         
         const auto data_offset = sizeof(Header) + this->info.block_size;

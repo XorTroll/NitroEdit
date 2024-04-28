@@ -7,7 +7,6 @@ namespace ntr::fmt {
     struct BMG : public fs::FileFormat {
 
         enum class Encoding : u8 {
-            // TODO: Unused = 0,
             CP1252 = 1,
             UTF16 = 2,
             ShiftJIS = 3,
@@ -36,6 +35,10 @@ namespace ntr::fmt {
             return 0;
         }
 
+        static inline constexpr bool IsValidEncoding(const Encoding enc) {
+            return GetCharacterSize(enc) > 0;
+        }
+
         struct Header : public MagicStartBase<u64, 0x31676D624753454D /* "MESGbmg1" */ > {
             u32 file_size;
             u32 section_count;
@@ -56,6 +59,10 @@ namespace ntr::fmt {
 
             inline size_t GetAttributesSize() {
                 return this->entry_size - OffsetSize;
+            }
+
+            inline void SetAttributesSize(const size_t size) {
+                this->entry_size = OffsetSize + size;
             }
         };
 
@@ -125,7 +132,7 @@ namespace ntr::fmt {
             return this->msg_id.has_value();
         }
 
-        Result CreateFrom(const Encoding enc, const size_t attr_size, const std::vector<Message> &msgs, const u32 file_id, const ntr::fs::FileCompression comp = ntr::fs::FileCompression::None);
+        Result CreateFrom(const Encoding enc, const bool has_message_ids, const size_t attr_size, const std::vector<Message> &msgs, const u32 file_id, const ntr::fs::FileCompression comp = ntr::fs::FileCompression::None);
 
         Result ValidateImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;
         Result ReadImpl(const std::string &path, std::shared_ptr<fs::FileHandle> file_handle, const fs::FileCompression comp) override;

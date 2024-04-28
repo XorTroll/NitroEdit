@@ -128,7 +128,7 @@ namespace ntr {
     constexpr Result ResultBMGInvalidHeader = 0x0401;
     constexpr Result ResultBMGInvalidInfoSection = 0x0402;
     constexpr Result ResultBMGInvalidDataSection = 0x0403;
-    constexpr Result ResultBMGInvalidUnsupportedCharacterFormat = 0x0404;
+    constexpr Result ResultBMGInvalidUnsupportedEncoding = 0x0404;
     constexpr Result ResultBMGInvalidMessageAttributeSize = 0x0405;
     constexpr Result ResultBMGInvalidEscapeSequence = 0x0406;
     constexpr Result ResultBMGUnexpectedSectionCount = 0x0407;
@@ -185,7 +185,9 @@ namespace ntr {
 
     constexpr Result ResultUtilityInvalidSections = 0x1001;
 
-    constexpr std::pair<Result, const char*> ResultDescriptionTable[] = {
+    using ResultDescriptionEntry = std::pair<Result, const char*>;
+
+    constexpr ResultDescriptionEntry ResultDescriptionTable[] = {
         { ResultSuccess, "Success" },
         { ResultUnknownResult, "Unknown result value" },
 
@@ -221,8 +223,8 @@ namespace ntr {
         { ResultBMGInvalidHeader, "Invalid BMG header" },
         { ResultBMGInvalidInfoSection, "Invalid BMG INF1 section" },
         { ResultBMGInvalidDataSection, "Invalid BMG DAT1 section" },
-        { ResultBMGInvalidUnsupportedCharacterFormat, "Unsupported BMG character format" },
-        { ResultBMGInvalidMessageAttributeSize, "Invalid BMG message attributes" },
+        { ResultBMGInvalidUnsupportedEncoding, "Invalid or unsupported BMG encoding" },
+        { ResultBMGInvalidMessageAttributeSize, "Invalid BMG message attribute size" },
         { ResultBMGInvalidEscapeSequence, "Invalid BMG escape sequence" },
         { ResultBMGUnexpectedSectionCount, "Unexpected BMG section count (< 2)" },
         { ResultBMGInvalidMessageIdSection, "Invalid BMG MID1 section" },

@@ -24,12 +24,14 @@ namespace nedit::mod {
             auto lib = std::make_shared<QLibrary>(path);
             if(lib->load()) {
                 NEDIT_MOD_TRY_RESOLVE_MOD_SYMBOL(NEDIT_MOD_INITIALIZE_SYMBOL, InitializeFunction, init_fn);
-                NEDIT_MOD_TRY_RESOLVE_MOD_SYMBOL(NEDIT_MOD_PROVIDES_COMMAND_SYMBOL, ProvidesCommandFunction, provides_cmd_fn);
-                NEDIT_MOD_TRY_RESOLVE_MOD_SYMBOL(NEDIT_MOD_HANDLE_COMMAND_SYMBOL, HandleCommandFunction, handle_cmd_fn);
+                NEDIT_MOD_TRY_RESOLVE_MOD_SYMBOL(NEDIT_MOD_TRY_HANDLE_COMMAND_SYMBOL, TryHandleCommandFunction, try_handle_cmd_fn);
+                NEDIT_MOD_TRY_RESOLVE_MOD_SYMBOL(NEDIT_MOD_TRY_HANDLE_INPUT_SYMBOL, TryHandleInputFunction, try_handle_input_fn);
 
                 if(!out_mod.symbols.init_fn(&out_mod.meta)) {
                     return ResultModuleInitializationFailure;
                 }
+
+                RegisterResultDescriptionTable(out_mod.meta.rc_table, out_mod.meta.rc_table_size);
 
                 out_mod.dyn_lib = std::move(lib);
                 NTR_R_SUCCEED();

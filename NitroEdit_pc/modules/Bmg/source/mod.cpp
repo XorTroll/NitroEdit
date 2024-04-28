@@ -6,26 +6,10 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <ui/ui_BmgSubWindow.hpp>
+#include <QFileInfo>
 
 namespace {
-
-    std::string FormatEncoding(const ntr::fmt::BMG::Encoding enc) {
-        switch(enc) {
-            case ntr::fmt::BMG::Encoding::CP1252: {
-                return "CP1252";
-            }
-            case ntr::fmt::BMG::Encoding::UTF16: {
-                return "UTF-16";
-            }
-            case ntr::fmt::BMG::Encoding::UTF8: {
-                return "UTF-8";
-            }
-            case ntr::fmt::BMG::Encoding::ShiftJIS: {
-                return "Shift-JIS";
-            }
-        }
-        return "<unk>";
-    }
 
     std::string FormatEscape(const ntr::fmt::BMG::MessageEscape &esc) {
         std::stringstream strm;
@@ -155,7 +139,7 @@ namespace {
         const auto rc = bmg.ReadFrom(bmg_path, std::make_shared<ntr::fs::StdioFileHandle>());
         if(rc.IsSuccess()) {
             if(verbose) {
-                std::cout << " - Encoding: " << FormatEncoding(bmg.header.encoding) << std::endl;
+                std::cout << " - Encoding: " << FormatEncoding(bmg.header.encoding).toStdString() << std::endl;
                 std::cout << " - Message extra attribute size: 0x" << std::hex << bmg.info.GetAttributesSize() << std::dec << std::endl;
 
                 std::cout << " - Messages:" << std::endl;
@@ -241,7 +225,7 @@ namespace {
         }
 
         ntr::fmt::BMG bmg;
-        auto rc = bmg.CreateFrom(enc, 0, msgs, 0);
+        auto rc = bmg.CreateFrom(enc, false, 0, msgs, 0);
         if(rc.IsFailure()) {
             std::cerr << "Unable to create BMG file: " << rc.GetDescription() << std::endl;
             return;
@@ -311,9 +295,27 @@ NEDIT_MOD_DEFINE_START(
     "Bmg",
     "BMG support and utilities",
     "XorTroll",
-    NEDIT_MAJOR,NEDIT_MINOR,NEDIT_MICRO,NEDIT_BUGFIX
+    NEDIT_MAJOR,NEDIT_MINOR,NEDIT_MICRO,NEDIT_BUGFIX,
+    ResultDescriptionTable, std::size(ResultDescriptionTable)
 )
 
 NEDIT_MOD_DEFINE_REGISTER_COMMAND("bmg", HandleCommand)
 
 NEDIT_MOD_DEFINE_END()
+
+NEDIT_MOD_SYMBOL bool NEDIT_MOD_TRY_HANDLE_INPUT_SYMBOL(const QString &path, std::shared_ptr<ntr::fs::FileHandle> file_handle, nedit::mod::Context *ctx) {
+    auto bmg = std::make_shared<ntr::fmt::BMG>();
+    const auto rc = bmg->ReadFrom(path.toStdString(), file_handle);
+    if(rc.IsSuccess()) {
+        auto subwin = new ui::BmgSubWindow(ctx, bmg, file_handle);
+
+        QFileInfo file_info(path);
+        subwin->setWindowTitle("BMG editor - " + file_info.fileName());
+
+        ctx->ShowSubWindow(subwin);
+        return true;
+    }
+    else {
+        return false;
+    }
+}

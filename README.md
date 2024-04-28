@@ -48,7 +48,13 @@ While it's still a work-in-progress project, it's quite close for an initial rel
 
 ### PC version
 
-> TODO
+The PC version of NitroEdit is another desktop Nintendo DS(i) ROM editor, made from scratch and inspired on already existing ones, aiming to mimic the best of them.
+
+Features:
+
+- BMG: editing the format, option to export/import from custom XML file (as a way to edit messages manually)
+
+> TODO: fill this with more features as I keep adding them prior to the first release of this tool
 
 ## Supported formats
 
@@ -92,7 +98,9 @@ Like with most DS(i) homebrew projects, this project basically requires devkitAR
 
 ### NitroEdit (PC)
 
-> TODO
+This project requires CMake and Qt.
+
+> TODO: detail build process in Windows/Linux
 
 ## TODO
 
@@ -146,7 +154,7 @@ Like with most DS(i) homebrew projects, this project basically requires devkitAR
 
 ### NitroEdit (PC)
 
-> TODO: make TODO list
+> TODO: make TODO list after a first version with basic things is released
 
 ## Support
 
@@ -156,7 +164,7 @@ Any suggestions, ideas and contributions are always welcome ;)
 
 - [devkitPro](https://github.com/devkitPro)'s devkitARM, libnds and libfat are the basic components in order to make this project and most other DS(i) homebrew projects.
 
-- Some already existing ROM editors were really helpful in order to understand several file formats: [Every File Explorer](https://github.com/Gericom/EveryFileExplorer), [NSMBe5](https://github.com/Dirbaio/NSMB-Editor), [MKDS Course Modifier](https://www.romhacking.net/utilities/1285/) and [DS Sound Studio](https://dswiki.garhoogin.com/page.jsp?name=DS%20Sound%20Studio)
+- Some already existing PC ROM editors were really helpful in order to understand several file formats, and as the base for this PC editor: [Every File Explorer](https://github.com/Gericom/EveryFileExplorer), [NSMBe5](https://github.com/Dirbaio/NSMB-Editor), [MKDS Course Modifier](https://www.romhacking.net/utilities/1285/) and [DS Sound Studio](https://dswiki.garhoogin.com/page.jsp?name=DS%20Sound%20Studio)
 
 - The following web pages were also really helpful in order to understand several file formats:
   - https://www.romhacking.net/documents/%5b469%5dnds_formats.htm

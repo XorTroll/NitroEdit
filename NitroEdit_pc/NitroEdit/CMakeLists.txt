@@ -27,13 +27,13 @@ include_directories(include ${MODULES_ROOT}/include ${LIBNEDIT_ROOT}/include)
 
 set(SOURCES
     source/main.cpp
+    source/base_Include.cpp
     source/mod/mod_Loader.cpp
     source/ui/ui_MainWindow.cpp
 )
 
 set(QOBJ_SOURCES
-    include/ui/ui_MainWindow.hpp
-    source/ui/ui_MainWindow.ui
+    include/ui/ui_MainWindow.hpp source/ui/ui_MainWindow.ui
 )
 
 set(PROJECT_SOURCES

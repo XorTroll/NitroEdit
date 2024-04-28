@@ -55,7 +55,7 @@ namespace ntr::fmt {
 
         struct SequenceInfo {
             u32 file_id;
-            u16 bank_id;
+            u16 bank_file_id;
             u8 volume;
             u8 channel_prio;
             u8 player_prio;
