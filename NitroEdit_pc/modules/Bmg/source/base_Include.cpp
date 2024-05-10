@@ -273,6 +273,7 @@ namespace {
     ntr::Result ParseFromXml(const QDomDocument &doc, std::shared_ptr<ntr::fmt::BMG> &out_bmg) {
         const auto root = doc.documentElement();
 
+        ntr::u32 file_id = 0;
         ntr::fmt::BMG::Encoding enc;
         std::vector<ntr::fmt::BMG::Message> msgs;
 
@@ -285,6 +286,13 @@ namespace {
         }
         const auto encoding_raw = root.attribute("encoding");
         NTR_R_TRY(ParseEncoding(encoding_raw, enc));
+
+        if(root.hasAttribute("id")) {
+            const auto file_id_raw = root.attribute("encoding");
+            if(!ParseStringInteger(file_id_raw, file_id)) {
+                NTR_R_FAIL(ResultBMGInvalidFileId);
+            }
+        }
 
         std::optional<bool> has_message_ids;
         std::optional<size_t> attribute_size;
@@ -393,8 +401,7 @@ namespace {
             attribute_size.emplace(0);
         }
 
-        // TODO: file id?
-        NTR_R_TRY(out_bmg->CreateFrom(enc, has_message_ids.value(), attribute_size.value(), msgs, 0));
+        NTR_R_TRY(out_bmg->CreateFrom(enc, has_message_ids.value(), attribute_size.value(), msgs, file_id));
 
         NTR_R_SUCCEED();
     }
@@ -410,7 +417,7 @@ ntr::Result SaveBmgXml(std::shared_ptr<ntr::fmt::BMG> &bmg, const QString &path)
     }
 
     QTextStream out(&file);
-    bmg_xml.save(out, 4);
+    bmg_xml.save(out, 0);
     file.close();
 
     NTR_R_SUCCEED();

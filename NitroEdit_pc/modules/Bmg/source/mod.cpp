@@ -200,42 +200,34 @@ namespace {
         }
     }
 
-    void CreateBmg(const std::string &enc_str, const std::string &txt_path, const std::string &out_bmg_path) {
-        ntr::fmt::BMG::Encoding enc;
-        if(!ReadEncoding(enc_str, enc)) {
-            std::cerr << "'" << enc_str << "' is not a supported encoding!" << std::endl;
-            return;
-        }
-        std::ifstream ifs(txt_path);
-        if(!ifs) {
-            std::cerr << "'" << txt_path << "' is not a valid text file!" << std::endl;
-            return;
-        }
-
-        std::vector<ntr::fmt::BMG::Message> msgs;
-        std::string txt_str;
-        while(std::getline(ifs, txt_str)) {
-            ntr::fmt::BMG::Message msg;
-
-            if(!BuildMessage(txt_str, msg)) {
+    void ConvertToXml(const std::string &bmg_path, const std::string &out_xml_path) {
+        auto bmg = std::make_shared<ntr::fmt::BMG>();
+        auto rc = bmg->ReadFrom(bmg_path, std::make_shared<ntr::fs::StdioFileHandle>());
+        if(rc.IsSuccess()) {
+            rc = SaveBmgXml(bmg, QString::fromStdString(out_xml_path));
+            if(rc.IsFailure()) {
+                std::cerr << "Unable to convert BMG and save XML file to '" << out_xml_path << "': " << rc.GetDescription() << std::endl;
                 return;
             }
-
-            msgs.push_back(msg);
         }
-
-        ntr::fmt::BMG bmg;
-        auto rc = bmg.CreateFrom(enc, false, 0, msgs, 0);
-        if(rc.IsFailure()) {
-            std::cerr << "Unable to create BMG file: " << rc.GetDescription() << std::endl;
+        else {
+            std::cerr << "Unable to read BMG file '" << bmg_path << "': " << rc.GetDescription() << std::endl;
             return;
         }
+    }
 
-        std::cout << "saving..." << std::endl;
-
-        rc = bmg.WriteTo(out_bmg_path, std::make_shared<ntr::fs::StdioFileHandle>());
-        if(rc.IsFailure())  {
-            std::cerr << "Unable to save BMG file: " << rc.GetDescription() << std::endl;
+    void CreateFromXml(const std::string &xml_path, const std::string &out_bmg_path) {
+        auto bmg = std::make_shared<ntr::fmt::BMG>();
+        auto rc = LoadBmgXml(QString::fromStdString(xml_path), bmg);
+        if(rc.IsSuccess()) {
+            rc = bmg->WriteTo(out_bmg_path, std::make_shared<ntr::fs::StdioFileHandle>());
+            if(rc.IsFailure())  {
+                std::cerr << "Unable to save BMG file to '" << out_bmg_path << "': " << rc.GetDescription() << std::endl;
+                return;
+            }
+        }
+        else {
+            std::cerr << "Unable to load XML file '" << xml_path << "' as BMG: " << rc.GetDescription() << std::endl;
             return;
         }
     }
@@ -246,21 +238,25 @@ namespace {
 
         args::Group commands(parser, "Commands:", args::Group::Validators::Xor);
 
-        args::Command list(commands, "list", "List BMG message strings");
+        args::Command list(commands, "list", "List BMG messages");
         args::Group list_required(list, "", args::Group::Validators::All);
         args::ValueFlag<std::string> list_bmg_file(list_required, "bmg_file", "Input BMG file", {'i', "in"});
-        args::Flag list_verbose(list, "verbose", "Print more information, not just the message strings", {'v', "verbose"});
+        args::Flag list_verbose(list, "verbose", "Print more information, not just the messages", {'v', "verbose"});
 
-        args::Command get(commands, "get", "Get BMG message by index");
+        args::Command get(commands, "get", "Get specific BMG message by index");
         args::Group get_required(get, "", args::Group::Validators::All);
         args::ValueFlag<std::string> get_bmg_file(get_required, "bmg_file", "Input BMG file", {'i', "in"});
         args::ValueFlag<std::string> get_idx(get_required, "idx", "BMG message index", {"idx"});
 
-        args::Command create(commands, "create", "Create BMG file(s) from text file");
+        args::Command create(commands, "create", "Create BMG file from XML file");
         args::Group create_required(create, "", args::Group::Validators::All);
-        args::ValueFlag<std::string> create_txt_file(create_required, "txt_file", "Input text file", {'i', "in"});
+        args::ValueFlag<std::string> create_txt_file(create_required, "xml_file", "Input XML file", {'i', "in"});
         args::ValueFlag<std::string> create_out_bmg_file(create_required, "out_bmg_file", "Output BMG file", {'o', "out"});
-        args::ValueFlag<std::string> create_encoding(create_required, "encoding", "Message encoding ('utf8' or 'utf16' are supported)", {"enc"});
+
+        args::Command convert(commands, "convert", "Convert BMG file to XML file");
+        args::Group convert_required(convert, "", args::Group::Validators::All);
+        args::ValueFlag<std::string> convert_bmg_file(convert_required, "bmg_file", "Input BMG file", {'i', "in"});
+        args::ValueFlag<std::string> convert_out_xml_file(convert_required, "out_xml_file", "Output XML file", {'o', "out"});
 
         try {
             parser.ParseArgs(args);
@@ -282,10 +278,14 @@ namespace {
             GetBmgString(bmg_path, idx_str);
         }
         else if(create) {
-            const auto enc_str = create_encoding.Get();
-            const auto txt_path = create_txt_file.Get();
+            const auto xml_path = create_txt_file.Get();
             const auto out_bmg_path = create_out_bmg_file.Get();
-            CreateBmg(enc_str, txt_path, out_bmg_path);
+            CreateFromXml(xml_path, out_bmg_path);
+        }
+        else if(convert) {
+            const auto bmg_path = convert_bmg_file.Get();
+            const auto out_xml_path = convert_out_xml_file.Get();
+            ConvertToXml(bmg_path, out_xml_path);
         }
     }
 

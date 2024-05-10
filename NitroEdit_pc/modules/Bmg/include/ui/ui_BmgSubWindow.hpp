@@ -28,7 +28,7 @@ namespace ui {
 
         private:
             ntr::fmt::BMG::Encoding GetCurrentEncoding();
-            void ReloadEncoding();
+            void ReloadFields();
             void OnMessageListViewDoubleClick(const QModelIndex &idx);
 
             Ui::BmgSubWindow *win_ui;

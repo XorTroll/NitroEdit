@@ -17,9 +17,11 @@ namespace ui {
         this->win_ui->comboBoxEncoding->addItem(FormatEncoding(ntr::fmt::BMG::Encoding::UTF16));
         this->win_ui->comboBoxEncoding->addItem(FormatEncoding(ntr::fmt::BMG::Encoding::ShiftJIS));
         this->win_ui->comboBoxEncoding->addItem(FormatEncoding(ntr::fmt::BMG::Encoding::UTF8));
-        this->ReloadEncoding();
-        
+        this->ReloadFields();
+
         this->win_ui->comboBoxEncoding->setToolTip("Change the encoding used with all messages");
+
+        this->win_ui->lineEditFileId->setToolTip("Change the file ID");
 
         this->win_ui->listViewMessages->setToolTip("Double-click on a message to edit it");
 
@@ -36,6 +38,14 @@ namespace ui {
             return true;
         }
 
+        ntr::u32 cur_file_id;
+        if(!ParseStringInteger(this->win_ui->lineEditFileId->text(), cur_file_id)) {
+            return true;
+        }
+        if(cur_file_id != this->bmg_file->info.file_id) {
+            return true;
+        }
+
         if(this->msg_edited) {
             return true;
         }
@@ -45,6 +55,11 @@ namespace ui {
 
     ntr::Result BmgSubWindow::Save() {
         this->bmg_file->header.encoding = this->GetCurrentEncoding();
+        
+        if(!ParseStringInteger(this->win_ui->lineEditFileId->text(), this->bmg_file->info.file_id)) {
+            NTR_R_FAIL(ResultBMGInvalidFileId);
+        }
+
         NTR_R_TRY(this->bmg_file->WriteTo(this->file_handle));
 
         this->msg_edited = false;
@@ -73,7 +88,7 @@ namespace ui {
                 NTR_R_TRY(LoadBmgXml(file, this->bmg_file));
             }
 
-            this->ReloadEncoding();
+            this->ReloadFields();
             this->ReloadPreviews();
             this->msg_edited = true;
         }
@@ -128,8 +143,9 @@ namespace ui {
         return static_cast<ntr::fmt::BMG::Encoding>(this->win_ui->comboBoxEncoding->currentIndex() + 1);
     }
 
-    void BmgSubWindow::ReloadEncoding() {
+    void BmgSubWindow::ReloadFields() {
         this->win_ui->comboBoxEncoding->setCurrentIndex(static_cast<size_t>(this->bmg_file->header.encoding) - 1);
+        this->win_ui->lineEditFileId->setText(QString::number(this->bmg_file->info.file_id));
     }
 
     void BmgSubWindow::OnMessageListViewDoubleClick(const QModelIndex &idx) {

@@ -16,6 +16,7 @@ constexpr ntr::Result ResultLoadBMGXmlInvalidChildTag = 0xe009;
 constexpr ntr::Result ResultLoadBMGXmlMessageIdMismatch = 0xe00a;
 constexpr ntr::Result ResultLoadBMGXmlAttributesMismatch = 0xe00b;
 constexpr ntr::Result ResultLoadBMGXmlInvalidMessageToken = 0xe00c;
+constexpr ntr::Result ResultBMGInvalidFileId = 0xe00d;
 
 constexpr ntr::ResultDescriptionEntry ResultDescriptionTable[] = {
     { ResultEditBMGInvalidEscapeByte, "Invalid escape byte found in BMG text" },
@@ -29,7 +30,8 @@ constexpr ntr::ResultDescriptionEntry ResultDescriptionTable[] = {
     { ResultLoadBMGXmlInvalidChildTag, "Invalid XML file to parse as BMG: expected child 'message' element" },
     { ResultLoadBMGXmlMessageIdMismatch, "Invalid XML file to parse as BMG: some messages have ID and others do not" },
     { ResultLoadBMGXmlAttributesMismatch, "Invalid XML file to parse as BMG: messages have different attributes size" },
-    { ResultLoadBMGXmlInvalidMessageToken, "Invalid XML file to parse as BMG: invalid message token (expected plain text or escape token)" }
+    { ResultLoadBMGXmlInvalidMessageToken, "Invalid XML file to parse as BMG: invalid message token (expected plain text or escape token)" },
+    { ResultBMGInvalidFileId, "Invalid BMG file ID integer" }
 };
 
 inline constexpr ntr::Result GetResultDescription(const ntr::Result rc, std::string &out_desc) {
