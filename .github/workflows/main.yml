@@ -14,9 +14,9 @@ jobs:
     - name: Checkout 
       uses: actions/checkout@v3
     - name: Build
-      run: make -C NitroEdit_ds/
+      run: make
 
     - uses: actions/upload-artifact@master
       with:
         name: NitroEdit
-        path: NitroEdit_ds/NitroEdit.nds
+        path: NitroEdit.nds

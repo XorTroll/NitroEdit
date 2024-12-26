@@ -1,9 +1,6 @@
 .vscode/
 build/
 bin/
-obj/
 *.elf
 *.nds
-.qt/
-CMakeFiles/
 dev/
